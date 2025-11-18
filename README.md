@@ -1,5 +1,13 @@
 # ASP.NET Boilerplate
 
+# 完整流程
+.\version-update.ps1 "11.0.1"          # 1. 更新版本
+cd nupkg && .\pack.ps1                  # 2. 打包
+dotnet nuget push '*.nupkg' -s http://localhost:15000/v3/index.json --skip-duplicate  # 3. 推送
+
+
+
+
 [![Build Status](https://github.com/aspnetboilerplate/aspnetboilerplate/actions/workflows/build-and-test.yml/badge.svg)](https://github.com/aspnetboilerplate/aspnetboilerplate/actions/workflows/build-and-test.yml)
 [![NuGet](https://img.shields.io/nuget/v/Abp.svg?style=flat-square)](https://www.nuget.org/packages/Abp)
 [![MyGet (with prereleases)](https://img.shields.io/myget/abp-nightly/vpre/Abp.svg?style=flat-square)](https://aspnetboilerplate.com/Pages/Documents/Nightly-Builds)
