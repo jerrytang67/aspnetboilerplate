@@ -1,5 +1,5 @@
 using System;
-using Castle.Core.Logging;
+using Microsoft.Extensions.Logging;
 
 namespace Abp.Logging
 {
@@ -13,19 +13,19 @@ namespace Abp.Logging
             switch (severity)
             {
                 case LogSeverity.Fatal:
-                    logger.Fatal(message);
+                    logger.LogCritical(message);
                     break;
                 case LogSeverity.Error:
-                    logger.Error(message);
+                    logger.LogError(message);
                     break;
                 case LogSeverity.Warn:
-                    logger.Warn(message);
+                    logger.LogWarning(message);
                     break;
                 case LogSeverity.Info:
-                    logger.Info(message);
+                    logger.LogInformation(message);
                     break;
                 case LogSeverity.Debug:
-                    logger.Debug(message);
+                    logger.LogDebug(message);
                     break;
                 default:
                     throw new AbpException("Unknown LogSeverity value: " + severity);
@@ -37,19 +37,19 @@ namespace Abp.Logging
             switch (severity)
             {
                 case LogSeverity.Fatal:
-                    logger.Fatal(message, exception);
+                    logger.LogCritical(exception, message);
                     break;
                 case LogSeverity.Error:
-                    logger.Error(message, exception);
+                    logger.LogError(exception, message);
                     break;
                 case LogSeverity.Warn:
-                    logger.Warn(message, exception);
+                    logger.LogWarning(exception, message);
                     break;
                 case LogSeverity.Info:
-                    logger.Info(message, exception);
+                    logger.LogInformation(exception, message);
                     break;
                 case LogSeverity.Debug:
-                    logger.Debug(message, exception);
+                    logger.LogDebug(exception, message);
                     break;
                 default:
                     throw new AbpException("Unknown LogSeverity value: " + severity);
@@ -58,26 +58,26 @@ namespace Abp.Logging
 
         public static void Log(this ILogger logger, LogSeverity severity, Func<string> messageFactory)
         {
-            switch (severity)
+            // Only invoke the message factory if logging is enabled for this level
+            if (!IsEnabled(logger, severity))
             {
-                case LogSeverity.Fatal:
-                    logger.Fatal(messageFactory);
-                    break;
-                case LogSeverity.Error:
-                    logger.Error(messageFactory);
-                    break;
-                case LogSeverity.Warn:
-                    logger.Warn(messageFactory);
-                    break;
-                case LogSeverity.Info:
-                    logger.Info(messageFactory);
-                    break;
-                case LogSeverity.Debug:
-                    logger.Debug(messageFactory);
-                    break;
-                default:
-                    throw new AbpException("Unknown LogSeverity value: " + severity);
+                return;
             }
+
+            Log(logger, severity, messageFactory());
+        }
+
+        private static bool IsEnabled(ILogger logger, LogSeverity severity)
+        {
+            return severity switch
+            {
+                LogSeverity.Fatal => logger.IsEnabled(LogLevel.Critical),
+                LogSeverity.Error => logger.IsEnabled(LogLevel.Error),
+                LogSeverity.Warn => logger.IsEnabled(LogLevel.Warning),
+                LogSeverity.Info => logger.IsEnabled(LogLevel.Information),
+                LogSeverity.Debug => logger.IsEnabled(LogLevel.Debug),
+                _ => false
+            };
         }
     }
 }

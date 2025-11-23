@@ -1,12 +1,10 @@
 ﻿using Abp.Runtime.Remoting;
 
-namespace Abp.EntityHistory
-{
+namespace Abp.EntityHistory {
     /// <summary>
     /// Implements null object pattern for <see cref="IEntityChangeSetReasonProvider"/>.
     /// </summary>
-    public class NullEntityChangeSetReasonProvider : EntityChangeSetReasonProviderBase
-    {
+    public class NullEntityChangeSetReasonProvider : EntityChangeSetReasonProviderBase {
         /// <summary>
         /// Singleton instance.
         /// </summary>
@@ -17,10 +15,8 @@ namespace Abp.EntityHistory
 
         private NullEntityChangeSetReasonProvider()
             : base(
-                  new DataContextAmbientScopeProvider<ReasonOverride>(new AsyncLocalAmbientDataContext())
-            )
-        {
-
+                new DataContextAmbientScopeProvider<ReasonOverride>(new AsyncLocalAmbientDataContext(), null)
+            ) {
         }
     }
 }

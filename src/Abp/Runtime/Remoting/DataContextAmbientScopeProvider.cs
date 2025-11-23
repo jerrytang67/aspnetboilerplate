@@ -1,56 +1,46 @@
-﻿using System;
+using System;
 using System.Collections.Concurrent;
+using Microsoft.Extensions.Logging;
 using Abp.Collections.Extensions;
-using Castle.Core.Logging;
+using Abp.Logging;
 using JetBrains.Annotations;
 
-namespace Abp.Runtime.Remoting
-{
-    public class DataContextAmbientScopeProvider<T> : IAmbientScopeProvider<T>
-    {
-        public ILogger Logger { get; set; }
-
+namespace Abp.Runtime.Remoting {
+    public class DataContextAmbientScopeProvider<T> : IAmbientScopeProvider<T> {
         private static readonly ConcurrentDictionary<string, ScopeItem> ScopeDictionary = new ConcurrentDictionary<string, ScopeItem>();
 
         private readonly IAmbientDataContext _dataContext;
+        private readonly ILogger _logger;
 
-        public DataContextAmbientScopeProvider([NotNull] IAmbientDataContext dataContext)
-        {
+        public DataContextAmbientScopeProvider([NotNull] IAmbientDataContext dataContext, ILogger logger) {
             Check.NotNull(dataContext, nameof(dataContext));
 
             _dataContext = dataContext;
-
-            Logger = NullLogger.Instance;
+            _logger = logger ?? NullLogger.Instance;
         }
 
-        public T GetValue(string contextKey)
-        {
+        public T GetValue(string contextKey) {
             var item = GetCurrentItem(contextKey);
-            if (item == null)
-            {
+            if (item == null) {
                 return default(T);
             }
 
             return item.Value;
         }
 
-        public IDisposable BeginScope(string contextKey, T value)
-        {
+        public IDisposable BeginScope(string contextKey, T value) {
             var item = new ScopeItem(value, GetCurrentItem(contextKey));
 
-            if (!ScopeDictionary.TryAdd(item.Id, item))
-            {
+            if (!ScopeDictionary.TryAdd(item.Id, item)) {
                 throw new AbpException("Can not add item! ScopeDictionary.TryAdd returns false!");
             }
 
             _dataContext.SetData(contextKey, item.Id);
 
-            return new DisposeAction(() =>
-            {
+            return new DisposeAction(() => {
                 ScopeDictionary.TryRemove(item.Id, out item);
 
-                if (item.Outer == null)
-                {
+                if (item.Outer == null) {
                     _dataContext.SetData(contextKey, null);
                     return;
                 }
@@ -59,22 +49,19 @@ namespace Abp.Runtime.Remoting
             });
         }
 
-        private ScopeItem GetCurrentItem(string contextKey)
-        {
+        private ScopeItem GetCurrentItem(string contextKey) {
             var objKey = _dataContext.GetData(contextKey) as string;
             return objKey != null ? ScopeDictionary.GetOrDefault(objKey) : null;
         }
 
-        private class ScopeItem
-        {
+        private class ScopeItem {
             public string Id { get; }
 
             public ScopeItem Outer { get; }
 
             public T Value { get; }
 
-            public ScopeItem(T value, ScopeItem outer = null)
-            {
+            public ScopeItem(T value, ScopeItem outer = null) {
                 Id = Guid.NewGuid().ToString();
 
                 Value = value;

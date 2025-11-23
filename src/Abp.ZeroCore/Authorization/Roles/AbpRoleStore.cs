@@ -4,7 +4,7 @@ using Abp.Domain.Repositories;
 using Abp.Domain.Uow;
 using Abp.Extensions;
 using Abp.Zero;
-using Castle.Core.Logging;
+using Abp.Logging;
 using JetBrains.Annotations;
 using Microsoft.AspNetCore.Identity;
 using System;
@@ -13,6 +13,7 @@ using System.Linq;
 using System.Security.Claims;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 
 namespace Abp.Authorization.Roles;
 
@@ -26,10 +27,7 @@ public class AbpRoleStore<TRole, TUser> :
     IQueryableRoleStore<TRole>,
     ITransientDependency
     where TRole : AbpRole<TUser>
-    where TUser : AbpUser<TUser>
-{
-    public ILogger Logger { get; set; }
-
+    where TUser : AbpUser<TUser> {
     /// <summary>
     /// Gets or sets the <see cref="IdentityErrorDescriber"/> for any error that occurred with the current operation.
     /// </summary>
@@ -48,18 +46,19 @@ public class AbpRoleStore<TRole, TUser> :
     private readonly IRepository<TRole> _roleRepository;
     private readonly IUnitOfWorkManager _unitOfWorkManager;
     private readonly IRepository<RolePermissionSetting, long> _rolePermissionSettingRepository;
+    private readonly ILogger<AbpRoleStore<TRole, TUser>> _logger;
 
     public AbpRoleStore(
         IUnitOfWorkManager unitOfWorkManager,
         IRepository<TRole> roleRepository,
-        IRepository<RolePermissionSetting, long> rolePermissionSettingRepository)
-    {
+        IRepository<RolePermissionSetting, long> rolePermissionSettingRepository,
+        ILogger<AbpRoleStore<TRole, TUser>> logger) {
         _unitOfWorkManager = unitOfWorkManager;
         _roleRepository = roleRepository;
         _rolePermissionSettingRepository = rolePermissionSettingRepository;
+        _logger = logger;
 
         ErrorDescriber = new IdentityErrorDescriber();
-        Logger = NullLogger.Instance;
     }
 
     public virtual Task<IQueryable<TRole>> GetRolesAsync()
@@ -68,10 +67,8 @@ public class AbpRoleStore<TRole, TUser> :
     /// <summary>Saves the current store.</summary>
     /// <param name="cancellationToken">The <see cref="CancellationToken"/> used to propagate notifications that the operation should be canceled.</param>
     /// <returns>The <see cref="Task"/> that represents the asynchronous operation.</returns>
-    protected Task SaveChanges(CancellationToken cancellationToken)
-    {
-        if (!AutoSaveChanges || _unitOfWorkManager.Current == null)
-        {
+    protected Task SaveChanges(CancellationToken cancellationToken) {
+        if (!AutoSaveChanges || _unitOfWorkManager.Current == null) {
             return Task.CompletedTask;
         }
 
@@ -85,10 +82,8 @@ public class AbpRoleStore<TRole, TUser> :
     /// <param name="cancellationToken">The <see cref="CancellationToken"/> used to propagate notifications that the operation should be canceled.</param>
     /// <returns>A <see cref="Task{TResult}"/> that represents the <see cref="IdentityResult"/> of the asynchronous query.</returns>
     public virtual async Task<IdentityResult> CreateAsync([NotNull] TRole role,
-        CancellationToken cancellationToken = default(CancellationToken))
-    {
-        return await _unitOfWorkManager.WithUnitOfWorkAsync(async () =>
-        {
+        CancellationToken cancellationToken = default(CancellationToken)) {
+        return await _unitOfWorkManager.WithUnitOfWorkAsync(async () => {
             cancellationToken.ThrowIfCancellationRequested();
 
             Check.NotNull(role, nameof(role));
@@ -107,10 +102,8 @@ public class AbpRoleStore<TRole, TUser> :
     /// <param name="cancellationToken">The <see cref="CancellationToken"/> used to propagate notifications that the operation should be canceled.</param>
     /// <returns>A <see cref="Task{TResult}"/> that represents the <see cref="IdentityResult"/> of the asynchronous query.</returns>
     public virtual async Task<IdentityResult> UpdateAsync([NotNull] TRole role,
-        CancellationToken cancellationToken = default(CancellationToken))
-    {
-        return await _unitOfWorkManager.WithUnitOfWorkAsync(async () =>
-        {
+        CancellationToken cancellationToken = default(CancellationToken)) {
+        return await _unitOfWorkManager.WithUnitOfWorkAsync(async () => {
             cancellationToken.ThrowIfCancellationRequested();
 
             Check.NotNull(role, nameof(role));
@@ -118,13 +111,11 @@ public class AbpRoleStore<TRole, TUser> :
             role.ConcurrencyStamp = Guid.NewGuid().ToString();
             await _roleRepository.UpdateAsync(role);
 
-            try
-            {
+            try {
                 await SaveChanges(cancellationToken);
             }
-            catch (AbpDbConcurrencyException ex)
-            {
-                Logger.Warn(ex.ToString(), ex);
+            catch (AbpDbConcurrencyException ex) {
+                _logger.LogWarning(ex.ToString(), ex);
                 return IdentityResult.Failed(ErrorDescriber.ConcurrencyFailure());
             }
 
@@ -141,23 +132,19 @@ public class AbpRoleStore<TRole, TUser> :
     /// <param name="cancellationToken">The <see cref="CancellationToken"/> used to propagate notifications that the operation should be canceled.</param>
     /// <returns>A <see cref="Task{TResult}"/> that represents the <see cref="IdentityResult"/> of the asynchronous query.</returns>
     public virtual async Task<IdentityResult> DeleteAsync([NotNull] TRole role,
-        CancellationToken cancellationToken = default(CancellationToken))
-    {
-        return await _unitOfWorkManager.WithUnitOfWorkAsync(async () =>
-        {
+        CancellationToken cancellationToken = default(CancellationToken)) {
+        return await _unitOfWorkManager.WithUnitOfWorkAsync(async () => {
             cancellationToken.ThrowIfCancellationRequested();
 
             Check.NotNull(role, nameof(role));
 
             await _roleRepository.DeleteAsync(role);
 
-            try
-            {
+            try {
                 await SaveChanges(cancellationToken);
             }
-            catch (AbpDbConcurrencyException ex)
-            {
-                Logger.Warn(ex.ToString(), ex);
+            catch (AbpDbConcurrencyException ex) {
+                _logger.LogWarning(ex.ToString(), ex);
                 return IdentityResult.Failed(ErrorDescriber.ConcurrencyFailure());
             }
 
@@ -174,8 +161,7 @@ public class AbpRoleStore<TRole, TUser> :
     /// <param name="cancellationToken">The <see cref="CancellationToken"/> used to propagate notifications that the operation should be canceled.</param>
     /// <returns>A <see cref="Task{TResult}"/> that contains the ID of the role.</returns>
     public Task<string> GetRoleIdAsync([NotNull] TRole role,
-        CancellationToken cancellationToken = default(CancellationToken))
-    {
+        CancellationToken cancellationToken = default(CancellationToken)) {
         cancellationToken.ThrowIfCancellationRequested();
 
         Check.NotNull(role, nameof(role));
@@ -190,8 +176,7 @@ public class AbpRoleStore<TRole, TUser> :
     /// <param name="cancellationToken">The <see cref="CancellationToken"/> used to propagate notifications that the operation should be canceled.</param>
     /// <returns>A <see cref="Task{TResult}"/> that contains the name of the role.</returns>
     public Task<string> GetRoleNameAsync([NotNull] TRole role,
-        CancellationToken cancellationToken = default(CancellationToken))
-    {
+        CancellationToken cancellationToken = default(CancellationToken)) {
         cancellationToken.ThrowIfCancellationRequested();
 
         Check.NotNull(role, nameof(role));
@@ -207,8 +192,7 @@ public class AbpRoleStore<TRole, TUser> :
     /// <param name="cancellationToken">The <see cref="CancellationToken"/> used to propagate notifications that the operation should be canceled.</param>
     /// <returns>The <see cref="Task"/> that represents the asynchronous operation.</returns>
     public Task SetRoleNameAsync([NotNull] TRole role, string roleName,
-        CancellationToken cancellationToken = default(CancellationToken))
-    {
+        CancellationToken cancellationToken = default(CancellationToken)) {
         cancellationToken.ThrowIfCancellationRequested();
 
         Check.NotNull(role, nameof(role));
@@ -224,10 +208,8 @@ public class AbpRoleStore<TRole, TUser> :
     /// <param name="cancellationToken">The <see cref="CancellationToken"/> used to propagate notifications that the operation should be canceled.</param>
     /// <returns>A <see cref="Task{TResult}"/> that result of the look up.</returns>
     public virtual async Task<TRole> FindByIdAsync(string id,
-        CancellationToken cancellationToken = default(CancellationToken))
-    {
-        return await _unitOfWorkManager.WithUnitOfWorkAsync(async () =>
-        {
+        CancellationToken cancellationToken = default(CancellationToken)) {
+        return await _unitOfWorkManager.WithUnitOfWorkAsync(async () => {
             cancellationToken.ThrowIfCancellationRequested();
             return await _roleRepository.FirstOrDefaultAsync(id.To<int>());
         });
@@ -239,10 +221,8 @@ public class AbpRoleStore<TRole, TUser> :
     /// <param name="id">The role ID to look for.</param>
     /// <param name="cancellationToken">The <see cref="CancellationToken"/> used to propagate notifications that the operation should be canceled.</param>
     /// <returns>A <see cref="Task{TResult}"/> that result of the look up.</returns>
-    public virtual TRole FindById(string id, CancellationToken cancellationToken = default(CancellationToken))
-    {
-        return _unitOfWorkManager.WithUnitOfWork(() =>
-        {
+    public virtual TRole FindById(string id, CancellationToken cancellationToken = default(CancellationToken)) {
+        return _unitOfWorkManager.WithUnitOfWork(() => {
             cancellationToken.ThrowIfCancellationRequested();
             return _roleRepository.FirstOrDefault(id.To<int>());
         });
@@ -256,10 +236,8 @@ public class AbpRoleStore<TRole, TUser> :
     /// <returns>A <see cref="Task{TResult}"/> that result of the look up.</returns>
     public virtual async Task<TRole> FindByNameAsync(
         [NotNull] string normalizedName,
-        CancellationToken cancellationToken = default(CancellationToken))
-    {
-        return await _unitOfWorkManager.WithUnitOfWorkAsync(async () =>
-        {
+        CancellationToken cancellationToken = default(CancellationToken)) {
+        return await _unitOfWorkManager.WithUnitOfWorkAsync(async () => {
             cancellationToken.ThrowIfCancellationRequested();
             Check.NotNull(normalizedName, nameof(normalizedName));
             return await _roleRepository.FirstOrDefaultAsync(r => r.NormalizedName == normalizedName);
@@ -274,10 +252,8 @@ public class AbpRoleStore<TRole, TUser> :
     /// <returns>A <see cref="Task{TResult}"/> that result of the look up.</returns>
     public virtual TRole FindByName(
         [NotNull] string normalizedName,
-        CancellationToken cancellationToken = default(CancellationToken))
-    {
-        return _unitOfWorkManager.WithUnitOfWork(() =>
-        {
+        CancellationToken cancellationToken = default(CancellationToken)) {
+        return _unitOfWorkManager.WithUnitOfWork(() => {
             cancellationToken.ThrowIfCancellationRequested();
             Check.NotNull(normalizedName, nameof(normalizedName));
             return _roleRepository.FirstOrDefault(r => r.NormalizedName == normalizedName);
@@ -292,8 +268,7 @@ public class AbpRoleStore<TRole, TUser> :
     /// <returns>A <see cref="Task{TResult}"/> that contains the name of the role.</returns>
     public virtual Task<string> GetNormalizedRoleNameAsync(
         [NotNull] TRole role,
-        CancellationToken cancellationToken = default(CancellationToken))
-    {
+        CancellationToken cancellationToken = default(CancellationToken)) {
         cancellationToken.ThrowIfCancellationRequested();
         Check.NotNull(role, nameof(role));
         return Task.FromResult(role.NormalizedName);
@@ -309,8 +284,7 @@ public class AbpRoleStore<TRole, TUser> :
     public virtual Task SetNormalizedRoleNameAsync(
         [NotNull] TRole role,
         string normalizedName,
-        CancellationToken cancellationToken = default(CancellationToken))
-    {
+        CancellationToken cancellationToken = default(CancellationToken)) {
         cancellationToken.ThrowIfCancellationRequested();
         Check.NotNull(role, nameof(role));
         role.NormalizedName = normalizedName;
@@ -320,8 +294,7 @@ public class AbpRoleStore<TRole, TUser> :
     /// <summary>
     /// Dispose the stores
     /// </summary>
-    public void Dispose()
-    {
+    public void Dispose() {
     }
 
     /// <summary>
@@ -332,10 +305,8 @@ public class AbpRoleStore<TRole, TUser> :
     /// <returns>A <see cref="Task{TResult}"/> that contains the claims granted to a role.</returns>
     public virtual async Task<IList<Claim>> GetClaimsAsync(
         [NotNull] TRole role,
-        CancellationToken cancellationToken = default(CancellationToken))
-    {
-        return await _unitOfWorkManager.WithUnitOfWorkAsync(async () =>
-        {
+        CancellationToken cancellationToken = default(CancellationToken)) {
+        return await _unitOfWorkManager.WithUnitOfWorkAsync(async () => {
             cancellationToken.ThrowIfCancellationRequested();
 
             Check.NotNull(role, nameof(role));
@@ -355,10 +326,8 @@ public class AbpRoleStore<TRole, TUser> :
     public async Task AddClaimAsync(
         [NotNull] TRole role,
         [NotNull] Claim claim,
-        CancellationToken cancellationToken = default(CancellationToken))
-    {
-        await _unitOfWorkManager.WithUnitOfWorkAsync(async () =>
-        {
+        CancellationToken cancellationToken = default(CancellationToken)) {
+        await _unitOfWorkManager.WithUnitOfWorkAsync(async () => {
             cancellationToken.ThrowIfCancellationRequested();
 
             Check.NotNull(role, nameof(role));
@@ -379,10 +348,8 @@ public class AbpRoleStore<TRole, TUser> :
     public async Task RemoveClaimAsync(
         [NotNull] TRole role,
         [NotNull] Claim claim,
-        CancellationToken cancellationToken = default(CancellationToken))
-    {
-        await _unitOfWorkManager.WithUnitOfWorkAsync(async () =>
-        {
+        CancellationToken cancellationToken = default(CancellationToken)) {
+        await _unitOfWorkManager.WithUnitOfWorkAsync(async () => {
             Check.NotNull(role, nameof(role));
             Check.NotNull(claim, nameof(claim));
 
@@ -392,28 +359,21 @@ public class AbpRoleStore<TRole, TUser> :
         });
     }
 
-    public virtual async Task<TRole> FindByDisplayNameAsync(string displayName)
-    {
-        return await _unitOfWorkManager.WithUnitOfWorkAsync(async () =>
-        {
-            return await _roleRepository.FirstOrDefaultAsync(
-                role => role.DisplayName == displayName
+    public virtual async Task<TRole> FindByDisplayNameAsync(string displayName) {
+        return await _unitOfWorkManager.WithUnitOfWorkAsync(async () => {
+            return await _roleRepository.FirstOrDefaultAsync(role => role.DisplayName == displayName
             );
         });
     }
 
-    public virtual async Task AddPermissionAsync(TRole role, PermissionGrantInfo permissionGrant)
-    {
-        await _unitOfWorkManager.WithUnitOfWorkAsync(async () =>
-        {
-            if (await HasPermissionAsync(role.Id, permissionGrant))
-            {
+    public virtual async Task AddPermissionAsync(TRole role, PermissionGrantInfo permissionGrant) {
+        await _unitOfWorkManager.WithUnitOfWorkAsync(async () => {
+            if (await HasPermissionAsync(role.Id, permissionGrant)) {
                 return;
             }
 
             await _rolePermissionSettingRepository.InsertAsync(
-                new RolePermissionSetting
-                {
+                new RolePermissionSetting {
                     TenantId = role.TenantId,
                     RoleId = role.Id,
                     Name = permissionGrant.Name,
@@ -423,44 +383,35 @@ public class AbpRoleStore<TRole, TUser> :
     }
 
     /// <inheritdoc/>
-    public virtual async Task RemovePermissionAsync(TRole role, PermissionGrantInfo permissionGrant)
-    {
-        await _unitOfWorkManager.WithUnitOfWorkAsync(async () =>
-        {
-            await _rolePermissionSettingRepository.DeleteAsync(
-                permissionSetting => permissionSetting.RoleId == role.Id &&
-                                     permissionSetting.Name == permissionGrant.Name &&
-                                     permissionSetting.IsGranted == permissionGrant.IsGranted
+    public virtual async Task RemovePermissionAsync(TRole role, PermissionGrantInfo permissionGrant) {
+        await _unitOfWorkManager.WithUnitOfWorkAsync(async () => {
+            await _rolePermissionSettingRepository.DeleteAsync(permissionSetting => permissionSetting.RoleId == role.Id &&
+                                                                                    permissionSetting.Name == permissionGrant.Name &&
+                                                                                    permissionSetting.IsGranted == permissionGrant.IsGranted
             );
         });
     }
 
     /// <inheritdoc/>
-    public virtual Task<IList<PermissionGrantInfo>> GetPermissionsAsync(TRole role)
-    {
+    public virtual Task<IList<PermissionGrantInfo>> GetPermissionsAsync(TRole role) {
         return GetPermissionsAsync(role.Id);
     }
 
     /// <inheritdoc/>
-    public virtual IList<PermissionGrantInfo> GetPermissions(TRole role)
-    {
+    public virtual IList<PermissionGrantInfo> GetPermissions(TRole role) {
         return GetPermissions(role.Id);
     }
 
-    public async Task<IList<PermissionGrantInfo>> GetPermissionsAsync(int roleId)
-    {
-        return await _unitOfWorkManager.WithUnitOfWorkAsync(async () =>
-        {
+    public async Task<IList<PermissionGrantInfo>> GetPermissionsAsync(int roleId) {
+        return await _unitOfWorkManager.WithUnitOfWorkAsync(async () => {
             return (await _rolePermissionSettingRepository.GetAllListAsync(p => p.RoleId == roleId))
                 .Select(p => new PermissionGrantInfo(p.Name, p.IsGranted))
                 .ToList();
         });
     }
 
-    public IList<PermissionGrantInfo> GetPermissions(int roleId)
-    {
-        return _unitOfWorkManager.WithUnitOfWork(() =>
-        {
+    public IList<PermissionGrantInfo> GetPermissions(int roleId) {
+        return _unitOfWorkManager.WithUnitOfWork(() => {
             return (_rolePermissionSettingRepository.GetAllList(p => p.RoleId == roleId))
                 .Select(p => new PermissionGrantInfo(p.Name, p.IsGranted))
                 .ToList();
@@ -468,24 +419,17 @@ public class AbpRoleStore<TRole, TUser> :
     }
 
     /// <inheritdoc/>
-    public virtual async Task<bool> HasPermissionAsync(int roleId, PermissionGrantInfo permissionGrant)
-    {
-        return await _unitOfWorkManager.WithUnitOfWorkAsync(async () =>
-        {
-            return await _rolePermissionSettingRepository.FirstOrDefaultAsync(
-                p => p.RoleId == roleId &&
-                     p.Name == permissionGrant.Name &&
-                     p.IsGranted == permissionGrant.IsGranted
+    public virtual async Task<bool> HasPermissionAsync(int roleId, PermissionGrantInfo permissionGrant) {
+        return await _unitOfWorkManager.WithUnitOfWorkAsync(async () => {
+            return await _rolePermissionSettingRepository.FirstOrDefaultAsync(p => p.RoleId == roleId &&
+                                                                                   p.Name == permissionGrant.Name &&
+                                                                                   p.IsGranted == permissionGrant.IsGranted
             ) != null;
         });
     }
 
     /// <inheritdoc/>
-    public virtual async Task RemoveAllPermissionSettingsAsync(TRole role)
-    {
-        await _unitOfWorkManager.WithUnitOfWorkAsync(async () =>
-        {
-            await _rolePermissionSettingRepository.DeleteAsync(s => s.RoleId == role.Id);
-        });
+    public virtual async Task RemoveAllPermissionSettingsAsync(TRole role) {
+        await _unitOfWorkManager.WithUnitOfWorkAsync(async () => { await _rolePermissionSettingRepository.DeleteAsync(s => s.RoleId == role.Id); });
     }
 }

@@ -1,6 +1,7 @@
-﻿using System;
+using System;
 using System.Threading.Tasks;
 using System.Transactions;
+using Microsoft.Extensions.Logging;
 using Abp.BackgroundJobs;
 using Abp.Dependency;
 
@@ -12,17 +13,20 @@ namespace Abp.Webhooks.BackgroundWorker
         private readonly IWebhookSubscriptionManager _webhookSubscriptionManager;
         private readonly IWebhookSendAttemptStore _webhookSendAttemptStore;
         private readonly IWebhookSender _webhookSender;
+        private readonly ILogger<WebhookSenderJob> _logger;
 
         public WebhookSenderJob(
             IWebhooksConfiguration webhooksConfiguration,
             IWebhookSubscriptionManager webhookSubscriptionManager,
             IWebhookSendAttemptStore webhookSendAttemptStore,
-            IWebhookSender webhookSender)
+            IWebhookSender webhookSender,
+            ILogger<WebhookSenderJob> logger)
         {
             _webhooksConfiguration = webhooksConfiguration;
             _webhookSubscriptionManager = webhookSubscriptionManager;
             _webhookSendAttemptStore = webhookSendAttemptStore;
             _webhookSender = webhookSender;
+            _logger = logger;
         }
 
         public override async Task ExecuteAsync(WebhookSenderArgs args)
@@ -35,7 +39,7 @@ namespace Abp.Webhooks.BackgroundWorker
                 }
                 catch (Exception e)
                 {
-                    Logger.Warn("An error occured while sending webhook with try once.", e);
+                    _logger.LogWarning("An error occured while sending webhook with try once.", e);
                     // ignored
                 }
             }

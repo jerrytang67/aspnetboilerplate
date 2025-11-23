@@ -1,5 +1,6 @@
-﻿using System.Threading.Tasks;
-using Castle.Core.Logging;
+using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
+using Abp.Logging;
 
 namespace Abp.Auditing
 {
@@ -24,11 +25,11 @@ namespace Abp.Auditing
         {
             if (auditInfo.Exception == null)
             {
-                Logger.Info(auditInfo.ToString());
+                Logger.LogInformation(auditInfo.ToString());
             }
             else
             {
-                Logger.Warn(auditInfo.ToString());
+                Logger.LogWarning(auditInfo.ToString());
             }
 
             return Task.FromResult(0);
@@ -38,11 +39,11 @@ namespace Abp.Auditing
         {
             if (auditInfo.Exception == null)
             {
-                Logger.Info(auditInfo.ToString());
+                Logger.LogInformation(auditInfo.ToString());
             }
             else
             {
-                Logger.Warn(auditInfo.ToString());
+                Logger.LogWarning(auditInfo.ToString());
             }
         }
     }

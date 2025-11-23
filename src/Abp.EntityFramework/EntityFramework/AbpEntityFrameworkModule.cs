@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Data.Entity.Infrastructure.Interception;
 using System.Reflection;
 using Abp.Collections.Extensions;
@@ -90,7 +90,7 @@ namespace Abp.EntityFramework
 
             if (dbContextTypes.IsNullOrEmpty())
             {
-                Logger.Warn("No class found derived from AbpDbContext.");
+                Logger.LogWarning("No class found derived from AbpDbContext.");
                 return;
             }
 
@@ -100,7 +100,7 @@ namespace Abp.EntityFramework
 
                 foreach (var dbContextType in dbContextTypes)
                 {
-                    Logger.Debug("Registering DbContext: " + dbContextType.AssemblyQualifiedName);
+                    Logger.LogDebug("Registering DbContext: " + dbContextType.AssemblyQualifiedName);
                     repositoryRegistrar.RegisterForDbContext(dbContextType, IocManager, EfAutoRepositoryTypes.Default);
 
                     IocManager.IocContainer.Register(

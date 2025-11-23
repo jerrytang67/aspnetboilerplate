@@ -2,8 +2,8 @@ using Abp.Dependency;
 using Abp.EntityFrameworkCore.Extensions;
 using Abp.ZeroCore.SampleApp.Core;
 using Abp.ZeroCore.SampleApp.EntityFramework;
-using Castle.MicroKernel.Registration;
-using Castle.Windsor.MsDependencyInjection;
+using Autofac;
+using Autofac.Extensions.DependencyInjection;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -22,7 +22,10 @@ public static class TestServiceCollectionRegistrar
     {
         var services = new ServiceCollection();
         ServicesCollectionDependencyRegistrar.Register(services);
-        WindsorRegistrationHelper.CreateServiceProvider(iocManager.IocContainer, services);
+        
+        // Use Autofac to populate services from IServiceCollection
+        var iocMgr = (IocManager)iocManager;
+        iocMgr.Builder.Populate(services);
     }
 
     private static void RegisterSqliteInMemoryDb(IIocManager iocManager)
@@ -32,12 +35,11 @@ public static class TestServiceCollectionRegistrar
         var inMemorySqlite = new SqliteConnection("Data Source=:memory:");
         builder.UseSqlite(inMemorySqlite).AddAbpDbContextOptionsExtension();
 
-        iocManager.IocContainer.Register(
-            Component
-                .For<DbContextOptions<SampleAppDbContext>>()
-                .Instance(builder.Options)
-                .LifestyleSingleton()
-        );
+        // Register using Autofac
+        var iocMgr = (IocManager)iocManager;
+        iocMgr.Builder.RegisterInstance(builder.Options)
+            .As<DbContextOptions<SampleAppDbContext>>()
+            .SingleInstance();
 
         inMemorySqlite.Open();
         new SampleAppDbContext(builder.Options).Database.EnsureCreated();

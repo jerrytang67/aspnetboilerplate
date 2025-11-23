@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Configuration;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 using Abp.Logging;
 using Abp.Threading;
 
@@ -49,52 +50,52 @@ namespace Abp.Configuration
         /// <inheritdoc/>
         public Task DeleteAsync(SettingInfo setting)
         {
-            LogHelper.Logger.Warn("ISettingStore is not implemented, using DefaultConfigSettingStore which does not support DeleteAsync.");
+            LogHelper.Logger.LogWarning("ISettingStore is not implemented, using DefaultConfigSettingStore which does not support DeleteAsync.");
             return AbpTaskCache.CompletedTask;
         }
         /// <inheritdoc/>
         public void Delete(SettingInfo setting)
         {
-            LogHelper.Logger.Warn("ISettingStore is not implemented, using DefaultConfigSettingStore which does not support DeleteAsync.");
+            LogHelper.Logger.LogWarning("ISettingStore is not implemented, using DefaultConfigSettingStore which does not support DeleteAsync.");
         }
 
         /// <inheritdoc/>
         public Task CreateAsync(SettingInfo setting)
         {
-            LogHelper.Logger.Warn("ISettingStore is not implemented, using DefaultConfigSettingStore which does not support CreateAsync.");
+            LogHelper.Logger.LogWarning("ISettingStore is not implemented, using DefaultConfigSettingStore which does not support CreateAsync.");
             return AbpTaskCache.CompletedTask;
         }
 
         /// <inheritdoc/>
         public void Create(SettingInfo setting)
         {
-            LogHelper.Logger.Warn("ISettingStore is not implemented, using DefaultConfigSettingStore which does not support CreateAsync.");
+            LogHelper.Logger.LogWarning("ISettingStore is not implemented, using DefaultConfigSettingStore which does not support CreateAsync.");
         }
 
         /// <inheritdoc/>
         public Task UpdateAsync(SettingInfo setting)
         {
-            LogHelper.Logger.Warn("ISettingStore is not implemented, using DefaultConfigSettingStore which does not support UpdateAsync.");
+            LogHelper.Logger.LogWarning("ISettingStore is not implemented, using DefaultConfigSettingStore which does not support UpdateAsync.");
             return AbpTaskCache.CompletedTask;
         }
 
         /// <inheritdoc/>
         public void Update(SettingInfo setting)
         {
-            LogHelper.Logger.Warn("ISettingStore is not implemented, using DefaultConfigSettingStore which does not support UpdateAsync.");
+            LogHelper.Logger.LogWarning("ISettingStore is not implemented, using DefaultConfigSettingStore which does not support UpdateAsync.");
         }
 
         /// <inheritdoc/>
         public Task<List<SettingInfo>> GetAllListAsync(int? tenantId, long? userId)
         {
-            LogHelper.Logger.Warn("ISettingStore is not implemented, using DefaultConfigSettingStore which does not support GetAllListAsync.");
+            LogHelper.Logger.LogWarning("ISettingStore is not implemented, using DefaultConfigSettingStore which does not support GetAllListAsync.");
             return Task.FromResult(new List<SettingInfo>());
         }
 
         /// <inheritdoc/>
         public List<SettingInfo> GetAllList(int? tenantId, long? userId)
         {
-            LogHelper.Logger.Warn("ISettingStore is not implemented, using DefaultConfigSettingStore which does not support GetAllListAsync.");
+            LogHelper.Logger.LogWarning("ISettingStore is not implemented, using DefaultConfigSettingStore which does not support GetAllListAsync.");
             return new List<SettingInfo>();
         }
     }

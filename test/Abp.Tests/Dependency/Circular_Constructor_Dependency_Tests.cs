@@ -1,4 +1,4 @@
-using Castle.MicroKernel;
+using Autofac.Core;
 using Xunit;
 
 namespace Abp.Tests.Dependency
@@ -12,7 +12,7 @@ namespace Abp.Tests.Dependency
             LocalIocManager.Register<MyClass2>();
             LocalIocManager.Register<MyClass3>();
 
-            Assert.Throws<CircularDependencyException>(() => LocalIocManager.Resolve<MyClass1>());
+            Assert.Throws<DependencyResolutionException>(() => LocalIocManager.Resolve<MyClass1>());
         }
 
         public class MyClass1

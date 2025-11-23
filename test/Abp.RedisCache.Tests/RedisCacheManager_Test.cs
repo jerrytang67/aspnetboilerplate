@@ -1,10 +1,11 @@
-﻿using System;
+using System;
 using Abp.Configuration.Startup;
+using Abp.Dependency;
 using Abp.Runtime.Caching;
 using Abp.Runtime.Caching.Configuration;
 using Abp.Runtime.Caching.Redis;
 using Abp.Tests;
-using Castle.MicroKernel.Registration;
+using Autofac;
 using NSubstitute;
 using Xunit;
 using Shouldly;
@@ -28,18 +29,25 @@ namespace Abp.RedisCache.Tests
             _redisDatabase = Substitute.For<IDatabase>();
             _redisDatabaseProvider = Substitute.For<IAbpRedisCacheDatabaseProvider>();
             _redisDatabaseProvider.GetDatabase().Returns(_redisDatabase);
-            LocalIocManager.IocContainer.Register(Component.For<IAbpRedisCacheDatabaseProvider>().Instance(_redisDatabaseProvider).LifestyleSingleton());
+
+            var iocMgr = (IocManager)LocalIocManager;
+            iocMgr.Builder.RegisterInstance(_redisDatabaseProvider).As<IAbpRedisCacheDatabaseProvider>().SingleInstance();
 
             LocalIocManager.Register<ICacheManager, AbpRedisCacheManager>();
             LocalIocManager.Register<IRedisCacheSerializer, DefaultRedisCacheSerializer>();
-            _redisSerializer = LocalIocManager.Resolve<IRedisCacheSerializer>();
 
-            LocalIocManager.IocContainer.Register(Component.For<IAbpStartupConfiguration>().Instance(Substitute.For<IAbpStartupConfiguration>()));
+            iocMgr.Builder.RegisterInstance(Substitute.For<IAbpStartupConfiguration>()).As<IAbpStartupConfiguration>();
 
             LocalIocManager.Register<IAbpRedisCacheKeyNormalizer, AbpRedisCacheKeyNormalizer>();
-            LocalIocManager.Register<IOptions<AbpRedisCacheOptions>,OptionsWrapper<AbpRedisCacheOptions>>();
+            LocalIocManager.Register<IOptions<AbpRedisCacheOptions>, OptionsWrapper<AbpRedisCacheOptions>>();
             LocalIocManager.Register<IMultiTenancyConfig, MultiTenancyConfig>();
+            
+            // Register AbpRedisCache as transient (required for cache creation)
+            LocalIocManager.Register<AbpRedisCache>(DependencyLifeStyle.Transient);
 
+            iocMgr.BuildContainer();
+
+            _redisSerializer = LocalIocManager.Resolve<IRedisCacheSerializer>();
 
             LocalIocManager.Resolve<ICachingConfiguration>().Configure("MyTestCacheItems", cache =>
             {

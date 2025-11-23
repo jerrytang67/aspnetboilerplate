@@ -1,12 +1,11 @@
-﻿using System;
+using System;
 using System.Threading;
+using Microsoft.Extensions.Logging;
 using Abp.Runtime;
-using Castle.Core.Logging;
+using Abp.Logging;
 
-namespace Abp.Threading
-{
-    public abstract class CancellationTokenProviderBase : ICancellationTokenProvider
-    {
+namespace Abp.Threading {
+    public abstract class CancellationTokenProviderBase : ICancellationTokenProvider {
         public const string CancellationTokenOverrideContextKey = "Abp.Threading.CancellationToken.Override";
 
         public abstract CancellationToken Token { get; }
@@ -17,14 +16,12 @@ namespace Abp.Threading
 
         protected CancellationTokenOverride OverridedValue => CancellationTokenOverrideScopeProvider.GetValue(CancellationTokenOverrideContextKey);
 
-        protected CancellationTokenProviderBase(IAmbientScopeProvider<CancellationTokenOverride> cancellationTokenOverrideScopeProvider)
-        {
+        protected CancellationTokenProviderBase(IAmbientScopeProvider<CancellationTokenOverride> cancellationTokenOverrideScopeProvider, ILogger logger) {
             CancellationTokenOverrideScopeProvider = cancellationTokenOverrideScopeProvider;
-            Logger = NullLogger.Instance;
+            Logger = logger;
         }
 
-        public IDisposable Use(CancellationToken cancellationToken)
-        {
+        public IDisposable Use(CancellationToken cancellationToken) {
             return CancellationTokenOverrideScopeProvider.BeginScope(CancellationTokenOverrideContextKey, new CancellationTokenOverride(cancellationToken));
         }
     }

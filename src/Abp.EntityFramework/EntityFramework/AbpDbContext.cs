@@ -11,6 +11,7 @@ using System.Data.Entity.Validation;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 using Abp.Collections.Extensions;
 using Abp.Configuration.Startup;
 using Abp.Dependency;
@@ -25,7 +26,7 @@ using Abp.Events.Bus.Entities;
 using Abp.Extensions;
 using Abp.Runtime.Session;
 using Abp.Timing;
-using Castle.Core.Logging;
+using Abp.Logging;
 using EntityFramework.DynamicFilters;
 
 namespace Abp.EntityFramework
@@ -399,7 +400,7 @@ namespace Abp.EntityFramework
 
                 if (edmProperty != null && edmProperty.StoreGeneratedPattern == StoreGeneratedPattern.None)
                 {
-                    entity.Id = GuidGenerator.Create();
+                    entity.Id = GuidGenerator.CreateLogger();
                 }
             }
         }
@@ -567,10 +568,10 @@ namespace Abp.EntityFramework
 
         protected virtual void LogDbEntityValidationException(DbEntityValidationException exception)
         {
-            Logger.Error("There are some validation errors while saving changes in EntityFramework:");
+            Logger.LogError("There are some validation errors while saving changes in EntityFramework:");
             foreach (var ve in exception.EntityValidationErrors.SelectMany(eve => eve.ValidationErrors))
             {
-                Logger.Error(" - " + ve.PropertyName + ": " + ve.ErrorMessage);
+                Logger.LogError(" - " + ve.PropertyName + ": " + ve.ErrorMessage);
             }
         }
 

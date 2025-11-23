@@ -1,6 +1,7 @@
 using System;
 using System.Security.Claims;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 using Abp.Authorization.Roles;
 using Abp.Authorization.Users;
 using Abp.Configuration;
@@ -12,7 +13,6 @@ using Abp.Runtime.Security;
 using Abp.Zero.Configuration;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.AspNetCore.Authentication;
 

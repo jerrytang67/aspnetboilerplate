@@ -12,17 +12,13 @@ using Abp.Runtime.Remoting;
 using Abp.Runtime.Session;
 using Abp.TestBase.Runtime.Session;
 using Abp.Tests.MultiTenancy;
-using Castle.MicroKernel.Registration;
 using NSubstitute;
 using Shouldly;
 using Xunit;
 
-namespace Abp.Tests.Configuration
-{
-    public class SettingManager_Tests : TestBaseWithLocalIocManager
-    {
-        private enum MyEnumSettingType
-        {
+namespace Abp.Tests.Configuration {
+    public class SettingManager_Tests : TestBaseWithLocalIocManager {
+        private enum MyEnumSettingType {
             Setting1 = 0,
             Setting2 = 1,
         }
@@ -33,15 +29,14 @@ namespace Abp.Tests.Configuration
         private const string MyEnumTypeSetting = "MyEnumTypeSetting";
         private const string MyEncryptedSetting = "MyEncryptedSetting";
 
-        private SettingManager CreateSettingManager(bool multiTenancyIsEnabled = true)
-        {
+        private SettingManager CreateSettingManager(bool multiTenancyIsEnabled = true) {
             return new SettingManager(
                 CreateMockSettingDefinitionManager(),
                 new AbpMemoryCacheManager(
-                    new CachingConfiguration(Substitute.For<IAbpStartupConfiguration>())
+                    new CachingConfiguration(Substitute.For<IAbpStartupConfiguration>()),
+                    null
                 ),
-                new MultiTenancyConfig
-                {
+                new MultiTenancyConfig {
                     IsEnabled = multiTenancyIsEnabled
                 }, new TestTenantStore(),
                 new SettingEncryptionService(new SettingsConfiguration()),
@@ -49,8 +44,7 @@ namespace Abp.Tests.Configuration
         }
 
         [Fact]
-        public async Task Should_Get_Default_Values_With_No_Store_And_No_Session()
-        {
+        public async Task Should_Get_Default_Values_With_No_Store_And_No_Session() {
             var settingManager = CreateSettingManager();
 
             (await settingManager.GetSettingValueAsync<int>(MyAppLevelSetting)).ShouldBe(42);
@@ -58,8 +52,7 @@ namespace Abp.Tests.Configuration
         }
 
         [Fact]
-        public async Task Should_Get_Stored_Application_Value_With_No_Session()
-        {
+        public async Task Should_Get_Stored_Application_Value_With_No_Session() {
             var settingManager = CreateSettingManager();
             settingManager.SettingStore = new MemorySettingStore();
 
@@ -68,8 +61,7 @@ namespace Abp.Tests.Configuration
         }
 
         [Fact]
-        public async Task Should_Get_Correct_Values()
-        {
+        public async Task Should_Get_Correct_Values() {
             var session = CreateTestAbpSession();
 
             var settingManager = CreateSettingManager();
@@ -111,8 +103,7 @@ namespace Abp.Tests.Configuration
         }
 
         [Fact]
-        public async Task Should_Get_All_Values()
-        {
+        public async Task Should_Get_All_Values() {
             var settingManager = CreateSettingManager();
             settingManager.SettingStore = new MemorySettingStore();
 
@@ -131,8 +122,7 @@ namespace Abp.Tests.Configuration
         }
 
         [Fact]
-        public async Task Should_Change_Setting_Values()
-        {
+        public async Task Should_Change_Setting_Values() {
             var session = CreateTestAbpSession();
 
             var settingManager = CreateSettingManager();
@@ -166,8 +156,7 @@ namespace Abp.Tests.Configuration
         }
 
         [Fact]
-        public async Task Should_Delete_Setting_Values_On_Default_Value()
-        {
+        public async Task Should_Delete_Setting_Values_On_Default_Value() {
             var session = CreateTestAbpSession();
             var store = new MemorySettingStore();
 
@@ -208,8 +197,7 @@ namespace Abp.Tests.Configuration
         }
 
         [Fact]
-        public async Task Should_Save_Application_Level_Setting_As_Tenant_Setting_When_Multi_Tenancy_Is_Disabled()
-        {
+        public async Task Should_Save_Application_Level_Setting_As_Tenant_Setting_When_Multi_Tenancy_Is_Disabled() {
             // Arrange
             var session = CreateTestAbpSession(multiTenancyIsEnabled: false);
 
@@ -226,8 +214,7 @@ namespace Abp.Tests.Configuration
         }
 
         [Fact]
-        public async Task Should_Get_Tenant_Setting_For_Application_Level_Setting_When_Multi_Tenancy_Is_Disabled()
-        {
+        public async Task Should_Get_Tenant_Setting_For_Application_Level_Setting_When_Multi_Tenancy_Is_Disabled() {
             // Arrange
             var session = CreateTestAbpSession(multiTenancyIsEnabled: false);
 
@@ -244,8 +231,7 @@ namespace Abp.Tests.Configuration
         }
 
         [Fact]
-        public async Task Should_Change_Setting_Value_When_Multi_Tenancy_Is_Disabled()
-        {
+        public async Task Should_Change_Setting_Value_When_Multi_Tenancy_Is_Disabled() {
             // Arrange
             var session = CreateTestAbpSession(multiTenancyIsEnabled: false);
 
@@ -267,8 +253,7 @@ namespace Abp.Tests.Configuration
         }
 
         [Fact]
-        public async Task Should_Get_Encrypted_Setting_Value()
-        {
+        public async Task Should_Get_Encrypted_Setting_Value() {
             var session = CreateTestAbpSession();
 
             var settingManager = CreateSettingManager();
@@ -291,8 +276,7 @@ namespace Abp.Tests.Configuration
         }
 
         [Fact]
-        public async Task Should_Set_Encrypted_Setting_Value()
-        {
+        public async Task Should_Set_Encrypted_Setting_Value() {
             var session = CreateTestAbpSession();
 
             var settingManager = CreateSettingManager();
@@ -341,8 +325,7 @@ namespace Abp.Tests.Configuration
         }
 
         [Fact]
-        public async Task Should_Get_Changed_Encrypted_Setting_Value()
-        {
+        public async Task Should_Get_Changed_Encrypted_Setting_Value() {
             var session = CreateTestAbpSession();
 
             var settingManager = CreateSettingManager();
@@ -387,34 +370,28 @@ namespace Abp.Tests.Configuration
             settingValue.ShouldBe("new_app_setting");
         }
 
-        private static TestAbpSession CreateTestAbpSession(bool multiTenancyIsEnabled = true)
-        {
+        private static TestAbpSession CreateTestAbpSession(bool multiTenancyIsEnabled = true) {
             return new TestAbpSession(
-                new MultiTenancyConfig {IsEnabled = multiTenancyIsEnabled},
+                new MultiTenancyConfig { IsEnabled = multiTenancyIsEnabled },
                 new DataContextAmbientScopeProvider<SessionOverride>(
-                    new AsyncLocalAmbientDataContext()
+                    new AsyncLocalAmbientDataContext(), null
                 ),
                 Substitute.For<ITenantResolver>()
             );
         }
 
-        private static ISettingDefinitionManager CreateMockSettingDefinitionManager()
-        {
-            var settings = new Dictionary<string, SettingDefinition>
-            {
-                {MyAppLevelSetting, new SettingDefinition(MyAppLevelSetting, "42")},
-                {
+        private static ISettingDefinitionManager CreateMockSettingDefinitionManager() {
+            var settings = new Dictionary<string, SettingDefinition> {
+                { MyAppLevelSetting, new SettingDefinition(MyAppLevelSetting, "42") }, {
                     MyAllLevelsSetting,
                     new SettingDefinition(MyAllLevelsSetting, "application level default value",
                         scopes: SettingScopes.Application | SettingScopes.Tenant | SettingScopes.User)
-                },
-                {
+                }, {
                     MyNotInheritedSetting,
                     new SettingDefinition(MyNotInheritedSetting, "default-value",
                         scopes: SettingScopes.Application | SettingScopes.Tenant, isInherited: false)
                 },
-                {MyEnumTypeSetting, new SettingDefinition(MyEnumTypeSetting, MyEnumSettingType.Setting1.ToString())},
-                {
+                { MyEnumTypeSetting, new SettingDefinition(MyEnumTypeSetting, MyEnumSettingType.Setting1.ToString()) }, {
                     MyEncryptedSetting,
                     new SettingDefinition(MyEncryptedSetting, "", isEncrypted: true,
                         scopes: SettingScopes.Application | SettingScopes.Tenant | SettingScopes.User)
@@ -424,10 +401,8 @@ namespace Abp.Tests.Configuration
             var definitionManager = Substitute.For<ISettingDefinitionManager>();
 
             //Implement methods
-            definitionManager.GetSettingDefinition(Arg.Any<string>()).Returns(x =>
-            {
-                if (!settings.TryGetValue(x[0].ToString(), out var settingDefinition))
-                {
+            definitionManager.GetSettingDefinition(Arg.Any<string>()).Returns(x => {
+                if (!settings.TryGetValue(x[0].ToString(), out var settingDefinition)) {
                     throw new AbpException("There is no setting defined with name: " + x[0]);
                 }
 
@@ -438,14 +413,11 @@ namespace Abp.Tests.Configuration
             return definitionManager;
         }
 
-        private class MemorySettingStore : ISettingStore
-        {
+        private class MemorySettingStore : ISettingStore {
             private readonly List<SettingInfo> _settings;
 
-            public MemorySettingStore()
-            {
-                _settings = new List<SettingInfo>
-                {
+            public MemorySettingStore() {
+                _settings = new List<SettingInfo> {
                     new SettingInfo(null, null, MyAppLevelSetting, "48"),
                     new SettingInfo(null, null, MyAllLevelsSetting, "application level stored value"),
                     new SettingInfo(1, null, MyAllLevelsSetting, "tenant 1 stored value"),
@@ -461,65 +433,54 @@ namespace Abp.Tests.Configuration
                 };
             }
 
-            public Task<SettingInfo> GetSettingOrNullAsync(int? tenantId, long? userId, string name)
-            {
+            public Task<SettingInfo> GetSettingOrNullAsync(int? tenantId, long? userId, string name) {
                 return Task.FromResult(GetSettingOrNull(tenantId, userId, name));
             }
 
-            public SettingInfo GetSettingOrNull(int? tenantId, long? userId, string name)
-            {
+            public SettingInfo GetSettingOrNull(int? tenantId, long? userId, string name) {
                 return _settings.FirstOrDefault(s => s.TenantId == tenantId && s.UserId == userId && s.Name == name);
             }
 
 #pragma warning disable 1998
-            public Task DeleteAsync(SettingInfo setting)
-            {
+            public Task DeleteAsync(SettingInfo setting) {
                 Delete(setting);
                 return Task.CompletedTask;
             }
 
-            public void Delete(SettingInfo setting)
-            {
+            public void Delete(SettingInfo setting) {
                 _settings.RemoveAll(s =>
                     s.TenantId == setting.TenantId && s.UserId == setting.UserId && s.Name == setting.Name);
             }
 #pragma warning restore 1998
 
 #pragma warning disable 1998
-            public Task CreateAsync(SettingInfo setting)
-            {
+            public Task CreateAsync(SettingInfo setting) {
                 Create(setting);
                 return Task.CompletedTask;
             }
 
-            public void Create(SettingInfo setting)
-            {
+            public void Create(SettingInfo setting) {
                 _settings.Add(setting);
             }
 #pragma warning restore 1998
 
-            public Task UpdateAsync(SettingInfo setting)
-            {
+            public Task UpdateAsync(SettingInfo setting) {
                 Update(setting);
                 return Task.CompletedTask;
             }
 
-            public void Update(SettingInfo setting)
-            {
+            public void Update(SettingInfo setting) {
                 var s = GetSettingOrNull(setting.TenantId, setting.UserId, setting.Name);
-                if (s != null)
-                {
+                if (s != null) {
                     s.Value = setting.Value;
                 }
             }
 
-            public Task<List<SettingInfo>> GetAllListAsync(int? tenantId, long? userId)
-            {
+            public Task<List<SettingInfo>> GetAllListAsync(int? tenantId, long? userId) {
                 return Task.FromResult(GetAllList(tenantId, userId));
             }
 
-            public List<SettingInfo> GetAllList(int? tenantId, long? userId)
-            {
+            public List<SettingInfo> GetAllList(int? tenantId, long? userId) {
                 var allSetting = _settings.Where(s => s.TenantId == tenantId && s.UserId == userId)
                     .Select(s => new SettingInfo(s.TenantId, s.UserId, s.Name, s.Value)).ToList();
 

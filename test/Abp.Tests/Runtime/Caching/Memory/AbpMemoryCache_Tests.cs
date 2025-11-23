@@ -1,4 +1,5 @@
-﻿using Abp.Runtime.Caching.Memory;
+﻿using Abp.Dependency;
+using Abp.Runtime.Caching.Memory;
 using Shouldly;
 using Xunit;
 
@@ -10,7 +11,7 @@ namespace Abp.Tests.Runtime.Caching.Memory
 
         public AbpMemoryCache_Tests()
         {
-            _memoryCache = new AbpMemoryCache("test cache");
+            _memoryCache = new AbpMemoryCache("test cache", new IocManager());
         }
 
 

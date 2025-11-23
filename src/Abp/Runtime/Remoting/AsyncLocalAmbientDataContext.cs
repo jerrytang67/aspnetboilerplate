@@ -6,7 +6,7 @@ namespace Abp.Runtime.Remoting
 {
     public class AsyncLocalAmbientDataContext : IAmbientDataContext, ISingletonDependency
     {
-        private static readonly ConcurrentDictionary<string, AsyncLocal<object>> AsyncLocalDictionary = new ConcurrentDictionary<string, AsyncLocal<object>>();
+        private static readonly ConcurrentDictionary<string, AsyncLocal<object>> AsyncLocalDictionary = new();
 
         public void SetData(string key, object value)
         {

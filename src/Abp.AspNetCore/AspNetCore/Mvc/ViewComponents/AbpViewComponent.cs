@@ -1,4 +1,5 @@
 using System.Globalization;
+using Microsoft.Extensions.Logging;
 using Abp.Application.Features;
 using Abp.Authorization;
 using Abp.Configuration;
@@ -6,7 +7,7 @@ using Abp.Localization;
 using Abp.Localization.Sources;
 using Abp.ObjectMapping;
 using Abp.Runtime.Session;
-using Castle.Core.Logging;
+using Abp.Logging;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Abp.AspNetCore.Mvc.ViewComponents;

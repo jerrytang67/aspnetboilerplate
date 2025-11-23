@@ -1,4 +1,5 @@
-﻿using Castle.MicroKernel.Registration;
+using Abp.Dependency;
+using Autofac;
 using Shouldly;
 using Xunit;
 
@@ -9,16 +10,16 @@ namespace Abp.Tests.Dependency
         [Fact]
         public void Should_Resolve_Generic_Types()
         {
-            LocalIocManager.IocContainer.Register(
-                Component.For<MyClass>(),
-                Component.For(typeof (IEmpty<>)).ImplementedBy(typeof (EmptyImplOne<>))
-                );
+            var iocMgr = (IocManager)LocalIocManager;
+            iocMgr.Builder.RegisterType<MyClass>();
+            iocMgr.Builder.RegisterGeneric(typeof(EmptyImplOne<>)).As(typeof(IEmpty<>));
+            iocMgr.BuildContainer();
 
             var genericObj = LocalIocManager.Resolve<IEmpty<MyClass>>();
             genericObj.GenericArg.GetType().ShouldBe(typeof(MyClass));
         }
 
-        public interface IEmpty<T> where T : class 
+        public interface IEmpty<T> where T : class
         {
             T GenericArg { get; set; }
         }

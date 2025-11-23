@@ -1,6 +1,6 @@
 using System;
 using Abp.Dependency;
-using Castle.MicroKernel.Registration;
+using Autofac;
 using Microsoft.EntityFrameworkCore;
 
 namespace Abp.EntityFrameworkCore.Configuration;
@@ -19,10 +19,8 @@ public class AbpEfCoreConfiguration : IAbpEfCoreConfiguration
     public void AddDbContext<TDbContext>(Action<AbpDbContextConfiguration<TDbContext>> action)
         where TDbContext : DbContext
     {
-        _iocManager.IocContainer.Register(
-            Component.For<IAbpDbContextConfigurer<TDbContext>>().Instance(
-                new AbpDbContextConfigurerAction<TDbContext>(action)
-            ).IsDefault()
-        );
+        var iocMgr = (IocManager)_iocManager;
+        iocMgr.Builder.RegisterInstance(new AbpDbContextConfigurerAction<TDbContext>(action))
+            .As<IAbpDbContextConfigurer<TDbContext>>();
     }
 }

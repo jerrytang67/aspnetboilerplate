@@ -1,17 +1,13 @@
 using Abp.Auditing;
 using Abp.RealTime;
+using Microsoft.Extensions.Logging;
 
 namespace Abp.AspNetCore.SignalR.Hubs;
 
-public class AbpCommonHub : OnlineClientHubBase
-{
-    public AbpCommonHub(IOnlineClientManager onlineClientManager, IOnlineClientInfoProvider clientInfoProvider)
-        : base(onlineClientManager, clientInfoProvider)
-    {
-    }
-
-    public void Register()
-    {
-        Logger.Debug("A client is registered: " + Context.ConnectionId);
+public class AbpCommonHub(IOnlineClientManager onlineClientManager, IOnlineClientInfoProvider clientInfoProvider, ILogger<AbpCommonHub> logger)
+    : OnlineClientHubBase(onlineClientManager,
+        clientInfoProvider, logger) {
+    public void Register() {
+        logger.LogDebug("A client is registered: " + Context.ConnectionId);
     }
 }

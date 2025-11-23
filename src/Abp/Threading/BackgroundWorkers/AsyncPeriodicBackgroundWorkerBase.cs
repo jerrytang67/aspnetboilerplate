@@ -1,37 +1,33 @@
-﻿using System;
+using System;
 using System.Threading.Tasks;
+using Abp.Dependency;
+using Microsoft.Extensions.Logging;
 using Abp.Threading.Timers;
 
-namespace Abp.Threading.BackgroundWorkers
-{
-    public abstract class AsyncPeriodicBackgroundWorkerBase : BackgroundWorkerBase
-    {
+namespace Abp.Threading.BackgroundWorkers {
+    public abstract class AsyncPeriodicBackgroundWorkerBase : BackgroundWorkerBase {
         protected readonly AbpAsyncTimer Timer;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="PeriodicBackgroundWorkerBase"/> class.
         /// </summary>
         /// <param name="timer">A timer.</param>
-        protected AsyncPeriodicBackgroundWorkerBase(AbpAsyncTimer timer)
-        {
+        protected AsyncPeriodicBackgroundWorkerBase(AbpAsyncTimer timer, IIocManager iocManager) : base(iocManager) {
             Timer = timer;
             Timer.Elapsed += Timer_Elapsed;
         }
 
-        public override void Start()
-        {
+        public override void Start() {
             base.Start();
             Timer.Start();
         }
 
-        public override void Stop()
-        {
+        public override void Stop() {
             Timer.Stop();
             base.Stop();
         }
 
-        public override void WaitToStop()
-        {
+        public override void WaitToStop() {
             Timer.WaitToStop();
             base.WaitToStop();
         }
@@ -39,15 +35,12 @@ namespace Abp.Threading.BackgroundWorkers
         /// <summary>
         /// Handles the Elapsed event of the Timer.
         /// </summary>
-        private async Task Timer_Elapsed(AbpAsyncTimer timer)
-        {
-            try
-            {
+        private async Task Timer_Elapsed(AbpAsyncTimer timer) {
+            try {
                 await DoWorkAsync();
             }
-            catch (Exception ex)
-            {
-                Logger.Warn(ex.ToString(), ex);
+            catch (Exception ex) {
+                Logger.LogWarning(ex.ToString(), ex);
             }
         }
 

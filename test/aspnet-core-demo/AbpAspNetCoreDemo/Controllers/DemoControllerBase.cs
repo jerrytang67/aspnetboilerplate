@@ -6,6 +6,6 @@ public class DemoControllerBase : AbpController
 {
     public DemoControllerBase()
     {
-        LocalizationSourceName = "AbpAspNetCoreDemoModule";
+        LocalizationSourceName = "demo";
     }
 }

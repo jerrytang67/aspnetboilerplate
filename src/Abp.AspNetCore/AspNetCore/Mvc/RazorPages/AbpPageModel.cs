@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 using Abp.Application.Features;
 using Abp.Authorization;
 using Abp.Configuration;
@@ -10,7 +11,7 @@ using Abp.Localization.Sources;
 using Abp.ObjectMapping;
 using Abp.Runtime.Session;
 using Abp.Web.Mvc.Alerts;
-using Castle.Core.Logging;
+using Abp.Logging;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 
 namespace Abp.AspNetCore.Mvc.RazorPages;

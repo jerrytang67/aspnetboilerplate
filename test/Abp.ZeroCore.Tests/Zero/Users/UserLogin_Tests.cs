@@ -124,7 +124,7 @@ public class UserLogin_Tests : AbpZeroTestBase
         var loginResult = await _logInManager.LoginAsync("forbidden-user", "123qwe", Tenant.DefaultTenantName);
         loginResult.Result.ShouldBe(AbpLoginResultType.FailedForOtherReason);
 
-        var localizationContext = LocalIocManager.IocContainer.Resolve<ILocalizationContext>();
+        var localizationContext = LocalIocManager.Resolve<ILocalizationContext>();
         loginResult.GetFailReason(localizationContext).ShouldBe("[Forbidden user]");
 
         UsingDbContext(context =>

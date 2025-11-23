@@ -1,5 +1,6 @@
 using System.Linq;
 using System.Reflection;
+using Abp.Dependency;
 using Abp.Modules;
 using Abp.Reflection;
 using Abp.Reflection.Extensions;
@@ -19,6 +20,9 @@ namespace Abp.Tests.Modules
                 options.IocManager = LocalIocManager;
             });
 
+            
+            // Build container before calling Initialize (two-phase lifecycle)
+            ((IocManager)LocalIocManager).BuildContainer();
             bootstrapper.Initialize();
 
             //Act

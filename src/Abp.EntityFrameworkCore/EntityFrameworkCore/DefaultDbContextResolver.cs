@@ -55,12 +55,12 @@ public class DefaultDbContextResolver : IDbContextResolver, ITransientDependency
                 options = CreateOptions<TDbContext>(connectionString, existingConnection)
             });
         }
-        catch (Castle.MicroKernel.Resolvers.DependencyResolverException ex)
+        catch (Autofac.Core.DependencyResolutionException ex)
         {
             var hasOptions = isAbstractDbContext ? HasOptions(concreteType) : HasOptions(dbContextType);
             if (!hasOptions)
             {
-                throw new AggregateException($"The parameter name of {dbContextType.Name}'s constructor must be 'options'", ex);
+                throw new AbpException($"The parameter name of {dbContextType.Name}'s constructor must be 'options'", ex);
             }
 
             throw;

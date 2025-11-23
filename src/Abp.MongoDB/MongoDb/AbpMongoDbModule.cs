@@ -10,14 +10,15 @@ namespace Abp.MongoDb
     [DependsOn(typeof(AbpKernelModule))]
     public class AbpMongoDbModule : AbpModule
     {
-        public override void PreInitialize()
-        {
+        public override void ConfigureServices() {
             IocManager.Register<IAbpMongoDbModuleConfiguration, AbpMongoDbModuleConfiguration>();
+
+            IocManager.RegisterAssemblyByConvention(Assembly.GetExecutingAssembly());
         }
+
 
         public override void Initialize()
         {
-            IocManager.RegisterAssemblyByConvention(Assembly.GetExecutingAssembly());
         }
     }
 }

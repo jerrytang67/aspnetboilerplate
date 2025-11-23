@@ -1,7 +1,7 @@
 using System;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 using Abp.Web.Security.AntiForgery;
-using Castle.Core.Logging;
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Mvc;
@@ -42,7 +42,7 @@ public class AbpValidateAntiforgeryTokenAuthorizationFilter : IAsyncAuthorizatio
 
         if (!context.IsEffectivePolicy<IAntiforgeryPolicy>(this))
         {
-            _logger.Info("Skipping the execution of current filter as its not the most effective filter implementing the policy " + typeof(IAntiforgeryPolicy));
+            _logger.LogInformation("Skipping the execution of current filter as its not the most effective filter implementing the policy " + typeof(IAntiforgeryPolicy));
             return;
         }
 
@@ -54,7 +54,7 @@ public class AbpValidateAntiforgeryTokenAuthorizationFilter : IAsyncAuthorizatio
             }
             catch (AntiforgeryValidationException exception)
             {
-                _logger.Error(exception.Message, exception);
+                _logger.LogError(exception.Message, exception);
                 context.Result = new AntiforgeryValidationFailedResult();
             }
         }

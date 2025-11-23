@@ -2,12 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using Castle.DynamicProxy;
-using Castle.MicroKernel;
-using Castle.MicroKernel.Registration;
-using Castle.Windsor;
-using Castle.Windsor.Installer;
-using Castle.Windsor.Proxy;
+using Autofac;
+using Autofac.Builder;
+using Autofac.Core;
 
 namespace Abp.Dependency
 {
@@ -22,23 +19,41 @@ namespace Abp.Dependency
         public static IocManager Instance { get; private set; }
 
         /// <summary>
-        /// Singletone instance for Castle ProxyGenerator.
-        /// From Castle.Core documentation it is highly recomended to use single instance of ProxyGenerator to avoid memoryleaks and performance issues
-        /// Follow next links for more details:
-        /// <a href="https://github.com/castleproject/Core/blob/master/docs/dynamicproxy.md">Castle.Core documentation</a>,
-        /// <a href="http://kozmic.net/2009/07/05/castle-dynamic-proxy-tutorial-part-xii-caching/">Article</a>
+        /// Reference to the Autofac Container.
         /// </summary>
-        private static readonly ProxyGenerator ProxyGeneratorInstance = new ProxyGenerator();
+        public IContainer IocContainer { get; private set; }
 
         /// <summary>
-        /// Reference to the Castle Windsor Container.
+        /// Container builder used for registrations before the container is built.
         /// </summary>
-        public IWindsorContainer IocContainer { get; private set; }
+        private ContainerBuilder _builder;
+
+        /// <summary>
+        /// Gets the container builder for pre-build registrations.
+        /// </summary>
+        public ContainerBuilder Builder => _builder;
 
         /// <summary>
         /// List of all registered conventional registrars.
         /// </summary>
         private readonly List<IConventionalDependencyRegistrar> _conventionalRegistrars;
+
+        /// <summary>
+        /// Set of types that have been registered.
+        /// Used to check registration status before container is built.
+        /// </summary>
+        private readonly HashSet<Type> _registeredTypes;
+
+        /// <summary>
+        /// Indicates whether the container has been built.
+        /// </summary>
+        private bool _isContainerBuilt;
+
+        /// <summary>
+        /// Gets a value indicating whether the container has been built.
+        /// Once built, no further service registrations are allowed.
+        /// </summary>
+        public bool IsContainerBuilt => _isContainerBuilt;
 
         static IocManager()
         {
@@ -52,20 +67,55 @@ namespace Abp.Dependency
         /// </summary>
         public IocManager()
         {
-            IocContainer = CreateContainer();
+            _builder = new ContainerBuilder();
             _conventionalRegistrars = new List<IConventionalDependencyRegistrar>();
+            _registeredTypes = new HashSet<Type>();
+            _isContainerBuilt = false;
 
             //Register self!
-            IocContainer.Register(
-                Component
-                    .For<IocManager, IIocManager, IIocRegistrar, IIocResolver>()
-                    .Instance(this)
-            );
+            _builder.RegisterInstance(this)
+                .As<IocManager>()
+                .As<IIocManager>()
+                .As<IIocRegistrar>()
+                .As<IIocResolver>()
+                .SingleInstance();
+
+            // Track these types as registered
+            _registeredTypes.Add(typeof(IocManager));
+            _registeredTypes.Add(typeof(IIocManager));
+            _registeredTypes.Add(typeof(IIocRegistrar));
+            _registeredTypes.Add(typeof(IIocResolver));
         }
 
-        protected virtual IWindsorContainer CreateContainer()
+        /// <summary>
+        /// Builds the container.
+        /// This method can only be called once. After the container is built, no further service registrations are allowed.
+        /// </summary>
+        /// <exception cref="AbpException">Thrown if the container is already built</exception>
+        public void BuildContainer()
         {
-            return new WindsorContainer(new DefaultProxyFactory(ProxyGeneratorInstance));
+            if (_isContainerBuilt)
+            {
+                throw new AbpException(
+                    "Container is already built and cannot be rebuilt. " +
+                    "BuildContainer() can only be called once.");
+            }
+
+            // Log the call stack when container is built
+            var stackTrace = new System.Diagnostics.StackTrace(true);
+            Console.WriteLine("=== CONTAINER BUILDING ===");
+            Console.WriteLine("Container is being built at:");
+            Console.WriteLine(stackTrace.ToString());
+            Console.WriteLine("=========================");
+
+            IocContainer = _builder.Build();
+            _isContainerBuilt = true;
+        }
+
+        protected virtual IContainer CreateContainer()
+        {
+            BuildContainer();
+            return IocContainer;
         }
 
         /// <summary>
@@ -91,8 +141,18 @@ namespace Abp.Dependency
         /// </summary>
         /// <param name="assembly">Assembly to register</param>
         /// <param name="config">Additional configuration</param>
+        /// <exception cref="AbpException">Thrown if the container is already built</exception>
         public void RegisterAssemblyByConvention(Assembly assembly, ConventionalRegistrationConfig config)
         {
+            if (_isContainerBuilt)
+            {
+                throw new AbpException(
+                    "Cannot register services after container is built. " +
+                    "All service registrations must occur in the ConfigureServices() method " +
+                    "before the container is constructed. " +
+                    $"Attempted to register assembly: {assembly.FullName}");
+            }
+
             var context = new ConventionalRegistrationContext(assembly, this, config);
 
             foreach (var registerer in _conventionalRegistrars)
@@ -102,7 +162,18 @@ namespace Abp.Dependency
 
             if (config.InstallInstallers)
             {
-                IocContainer.Install(FromAssembly.Instance(assembly));
+                // Autofac uses Modules instead of Installers
+                // Find and register all modules from the assembly
+                var moduleType = typeof(Autofac.Module);
+                var modules = assembly.GetTypes()
+                    .Where(t => moduleType.IsAssignableFrom(t) && !t.IsAbstract)
+                    .Select(t => (Autofac.Module)Activator.CreateInstance(t))
+                    .ToList();
+
+                foreach (var module in modules)
+                {
+                    _builder.RegisterModule(module);
+                }
             }
         }
 
@@ -111,9 +182,21 @@ namespace Abp.Dependency
         /// </summary>
         /// <typeparam name="TType">Type of the class</typeparam>
         /// <param name="lifeStyle">Lifestyle of the objects of this type</param>
+        /// <exception cref="AbpException">Thrown if the container is already built</exception>
         public void Register<TType>(DependencyLifeStyle lifeStyle = DependencyLifeStyle.Singleton) where TType : class
         {
-            IocContainer.Register(ApplyLifestyle(Component.For<TType>(), lifeStyle));
+            if (_isContainerBuilt)
+            {
+                throw new AbpException(
+                    "Cannot register services after container is built. " +
+                    "All service registrations must occur in the ConfigureServices() method " +
+                    "before the container is constructed. " +
+                    $"Attempted to register: {typeof(TType).FullName}");
+            }
+
+            var registration = _builder.RegisterType<TType>().AsSelf();
+            ApplyLifestyle(registration, lifeStyle);
+            _registeredTypes.Add(typeof(TType));
         }
 
         /// <summary>
@@ -121,9 +204,30 @@ namespace Abp.Dependency
         /// </summary>
         /// <param name="type">Type of the class</param>
         /// <param name="lifeStyle">Lifestyle of the objects of this type</param>
+        /// <exception cref="AbpException">Thrown if the container is already built</exception>
         public void Register(Type type, DependencyLifeStyle lifeStyle = DependencyLifeStyle.Singleton)
         {
-            IocContainer.Register(ApplyLifestyle(Component.For(type), lifeStyle));
+            if (_isContainerBuilt)
+            {
+                throw new AbpException(
+                    "Cannot register services after container is built. " +
+                    "All service registrations must occur in the ConfigureServices() method " +
+                    "before the container is constructed. " +
+                    $"Attempted to register: {type.FullName}");
+            }
+
+            // Handle open generic types
+            if (type.IsGenericTypeDefinition)
+            {
+                var registration = _builder.RegisterGeneric(type).AsSelf();
+                ApplyLifestyle(registration, lifeStyle);
+            }
+            else
+            {
+                var registration = _builder.RegisterType(type).AsSelf();
+                ApplyLifestyle(registration, lifeStyle);
+            }
+            _registeredTypes.Add(type);
         }
 
         /// <summary>
@@ -132,11 +236,24 @@ namespace Abp.Dependency
         /// <typeparam name="TType">Registering type</typeparam>
         /// <typeparam name="TImpl">The type that implements <typeparamref name="TType"/></typeparam>
         /// <param name="lifeStyle">Lifestyle of the objects of this type</param>
+        /// <exception cref="AbpException">Thrown if the container is already built</exception>
         public void Register<TType, TImpl>(DependencyLifeStyle lifeStyle = DependencyLifeStyle.Singleton)
             where TType : class
             where TImpl : class, TType
         {
-            IocContainer.Register(ApplyLifestyle(Component.For<TType, TImpl>().ImplementedBy<TImpl>(), lifeStyle));
+            if (_isContainerBuilt)
+            {
+                throw new AbpException(
+                    "Cannot register services after container is built. " +
+                    "All service registrations must occur in the ConfigureServices() method " +
+                    "before the container is constructed. " +
+                    $"Attempted to register: {typeof(TType).FullName} with implementation {typeof(TImpl).FullName}");
+            }
+
+            var registration = _builder.RegisterType<TImpl>().As<TType>().As<TImpl>();
+            ApplyLifestyle(registration, lifeStyle);
+            _registeredTypes.Add(typeof(TType));
+            _registeredTypes.Add(typeof(TImpl));
         }
 
         /// <summary>
@@ -145,9 +262,31 @@ namespace Abp.Dependency
         /// <param name="type">Type of the class</param>
         /// <param name="impl">The type that implements <paramref name="type"/></param>
         /// <param name="lifeStyle">Lifestyle of the objects of this type</param>
+        /// <exception cref="AbpException">Thrown if the container is already built</exception>
         public void Register(Type type, Type impl, DependencyLifeStyle lifeStyle = DependencyLifeStyle.Singleton)
         {
-            IocContainer.Register(ApplyLifestyle(Component.For(type, impl).ImplementedBy(impl), lifeStyle));
+            if (_isContainerBuilt)
+            {
+                throw new AbpException(
+                    "Cannot register services after container is built. " +
+                    "All service registrations must occur in the ConfigureServices() method " +
+                    "before the container is constructed. " +
+                    $"Attempted to register: {type.FullName} with implementation {impl.FullName}");
+            }
+
+            // Handle open generic types
+            if (type.IsGenericTypeDefinition && impl.IsGenericTypeDefinition)
+            {
+                var registration = _builder.RegisterGeneric(impl).As(type);
+                ApplyLifestyle(registration, lifeStyle);
+            }
+            else
+            {
+                var registration = _builder.RegisterType(impl).As(type).As(impl);
+                ApplyLifestyle(registration, lifeStyle);
+            }
+            _registeredTypes.Add(type);
+            _registeredTypes.Add(impl);
         }
 
         /// <summary>
@@ -156,7 +295,13 @@ namespace Abp.Dependency
         /// <param name="type">Type to check</param>
         public bool IsRegistered(Type type)
         {
-            return IocContainer.Kernel.HasComponent(type);
+            // If container is built, check the container
+            if (_isContainerBuilt)
+            {
+                return IocContainer.IsRegistered(type);
+            }
+            // Otherwise, check the tracking set
+            return _registeredTypes.Contains(type);
         }
 
         /// <summary>
@@ -165,89 +310,209 @@ namespace Abp.Dependency
         /// <typeparam name="TType">Type to check</typeparam>
         public bool IsRegistered<TType>()
         {
-            return IocContainer.Kernel.HasComponent(typeof(TType));
+            // If container is built, check the container
+            if (_isContainerBuilt)
+            {
+                return IocContainer.IsRegistered<TType>();
+            }
+            // Otherwise, check the tracking set
+            return _registeredTypes.Contains(typeof(TType));
         }
 
         /// <summary>
         /// Gets an object from IOC container.
         /// Returning object must be Released (see <see cref="IIocResolver.Release"/>) after usage.
-        /// </summary> 
+        /// </summary>
         /// <typeparam name="T">Type of the object to get</typeparam>
         /// <returns>The instance object</returns>
         public T Resolve<T>()
         {
+            if (!_isContainerBuilt)
+            {
+                // Log the call stack when Resolve triggers container building
+                var stackTrace = new System.Diagnostics.StackTrace(true);
+                Console.WriteLine("=== AUTO-BUILDING CONTAINER ===");
+                Console.WriteLine($"Container is being auto-built because Resolve<{typeof(T).Name}>() was called before BuildContainer().");
+                Console.WriteLine("Call stack:");
+                Console.WriteLine(stackTrace.ToString());
+                Console.WriteLine("================================");
+
+                BuildContainer();
+            }
             return IocContainer.Resolve<T>();
         }
 
         /// <summary>
         /// Gets an object from IOC container.
         /// Returning object must be Released (see <see cref="Release"/>) after usage.
-        /// </summary> 
+        /// </summary>
         /// <typeparam name="T">Type of the object to cast</typeparam>
         /// <param name="type">Type of the object to resolve</param>
         /// <returns>The object instance</returns>
         public T Resolve<T>(Type type)
         {
+            if (!_isContainerBuilt)
+            {
+                // Log the call stack when Resolve triggers container building
+                var stackTrace = new System.Diagnostics.StackTrace(true);
+                Console.WriteLine("=== AUTO-BUILDING CONTAINER ===");
+                Console.WriteLine($"Container is being auto-built because Resolve<{typeof(T).Name}>({type.Name}) was called before BuildContainer().");
+                Console.WriteLine("Call stack:");
+                Console.WriteLine(stackTrace.ToString());
+                Console.WriteLine("================================");
+
+                BuildContainer();
+            }
             return (T)IocContainer.Resolve(type);
         }
 
         /// <summary>
         /// Gets an object from IOC container.
         /// Returning object must be Released (see <see cref="IIocResolver.Release"/>) after usage.
-        /// </summary> 
+        /// </summary>
         /// <typeparam name="T">Type of the object to get</typeparam>
         /// <param name="argumentsAsAnonymousType">Constructor arguments</param>
         /// <returns>The instance object</returns>
         public T Resolve<T>(object argumentsAsAnonymousType)
         {
-            return IocContainer.Resolve<T>(Arguments.FromProperties(argumentsAsAnonymousType));
+            if (!_isContainerBuilt)
+            {
+                // Log the call stack when Resolve triggers container building
+                var stackTrace = new System.Diagnostics.StackTrace(true);
+                Console.WriteLine("=== AUTO-BUILDING CONTAINER ===");
+                Console.WriteLine($"Container is being auto-built because Resolve<{typeof(T).Name}>(args) was called before BuildContainer().");
+                Console.WriteLine("Call stack:");
+                Console.WriteLine(stackTrace.ToString());
+                Console.WriteLine("================================");
+
+                BuildContainer();
+            }
+            var parameters = CreateNamedParameters(argumentsAsAnonymousType);
+            return IocContainer.Resolve<T>(parameters);
         }
 
         /// <summary>
         /// Gets an object from IOC container.
         /// Returning object must be Released (see <see cref="IIocResolver.Release"/>) after usage.
-        /// </summary> 
+        /// </summary>
         /// <param name="type">Type of the object to get</param>
         /// <returns>The instance object</returns>
         public object Resolve(Type type)
         {
+            if (!_isContainerBuilt)
+            {
+                // Log the call stack when Resolve triggers container building
+                var stackTrace = new System.Diagnostics.StackTrace(true);
+                Console.WriteLine("=== AUTO-BUILDING CONTAINER ===");
+                Console.WriteLine($"Container is being auto-built because Resolve({type.Name}) was called before BuildContainer().");
+                Console.WriteLine("Call stack:");
+                Console.WriteLine(stackTrace.ToString());
+                Console.WriteLine("================================");
+
+                BuildContainer();
+            }
             return IocContainer.Resolve(type);
         }
 
         /// <summary>
         /// Gets an object from IOC container.
         /// Returning object must be Released (see <see cref="IIocResolver.Release"/>) after usage.
-        /// </summary> 
+        /// </summary>
         /// <param name="type">Type of the object to get</param>
         /// <param name="argumentsAsAnonymousType">Constructor arguments</param>
         /// <returns>The instance object</returns>
         public object Resolve(Type type, object argumentsAsAnonymousType)
         {
-            return IocContainer.Resolve(type, Arguments.FromProperties(argumentsAsAnonymousType));
+            if (!_isContainerBuilt)
+            {
+                // Log the call stack when Resolve triggers container building
+                var stackTrace = new System.Diagnostics.StackTrace(true);
+                Console.WriteLine("=== AUTO-BUILDING CONTAINER ===");
+                Console.WriteLine($"Container is being auto-built because Resolve({type.Name}, args) was called before BuildContainer().");
+                Console.WriteLine("Call stack:");
+                Console.WriteLine(stackTrace.ToString());
+                Console.WriteLine("================================");
+
+                BuildContainer();
+            }
+            var parameters = CreateNamedParameters(argumentsAsAnonymousType);
+            return IocContainer.Resolve(type, parameters);
         }
 
         ///<inheritdoc/>
         public T[] ResolveAll<T>()
         {
-            return IocContainer.ResolveAll<T>();
+            if (!_isContainerBuilt)
+            {
+                // Log the call stack when Resolve triggers container building
+                var stackTrace = new System.Diagnostics.StackTrace(true);
+                Console.WriteLine("=== AUTO-BUILDING CONTAINER ===");
+                Console.WriteLine($"Container is being auto-built because ResolveAll<{typeof(T).Name}>() was called before BuildContainer().");
+                Console.WriteLine("Call stack:");
+                Console.WriteLine(stackTrace.ToString());
+                Console.WriteLine("================================");
+
+                BuildContainer();
+            }
+            return IocContainer.Resolve<IEnumerable<T>>().ToArray();
         }
 
         ///<inheritdoc/>
         public T[] ResolveAll<T>(object argumentsAsAnonymousType)
         {
-            return IocContainer.ResolveAll<T>(Arguments.FromProperties(argumentsAsAnonymousType));
+            if (!_isContainerBuilt)
+            {
+                // Log the call stack when Resolve triggers container building
+                var stackTrace = new System.Diagnostics.StackTrace(true);
+                Console.WriteLine("=== AUTO-BUILDING CONTAINER ===");
+                Console.WriteLine($"Container is being auto-built because ResolveAll<{typeof(T).Name}>(args) was called before BuildContainer().");
+                Console.WriteLine("Call stack:");
+                Console.WriteLine(stackTrace.ToString());
+                Console.WriteLine("================================");
+
+                BuildContainer();
+            }
+            var parameters = CreateNamedParameters(argumentsAsAnonymousType);
+            return IocContainer.Resolve<IEnumerable<T>>(parameters).ToArray();
         }
 
         ///<inheritdoc/>
         public object[] ResolveAll(Type type)
         {
-            return IocContainer.ResolveAll(type).Cast<object>().ToArray();
+            if (!_isContainerBuilt)
+            {
+                // Log the call stack when Resolve triggers container building
+                var stackTrace = new System.Diagnostics.StackTrace(true);
+                Console.WriteLine("=== AUTO-BUILDING CONTAINER ===");
+                Console.WriteLine($"Container is being auto-built because ResolveAll({type.Name}) was called before BuildContainer().");
+                Console.WriteLine("Call stack:");
+                Console.WriteLine(stackTrace.ToString());
+                Console.WriteLine("================================");
+
+                BuildContainer();
+            }
+            var enumerableType = typeof(IEnumerable<>).MakeGenericType(type);
+            return ((System.Collections.IEnumerable)IocContainer.Resolve(enumerableType)).Cast<object>().ToArray();
         }
 
         ///<inheritdoc/>
         public object[] ResolveAll(Type type, object argumentsAsAnonymousType)
         {
-            return IocContainer.ResolveAll(type, Arguments.FromProperties(argumentsAsAnonymousType)).Cast<object>().ToArray();
+            if (!_isContainerBuilt)
+            {
+                // Log the call stack when Resolve triggers container building
+                var stackTrace = new System.Diagnostics.StackTrace(true);
+                Console.WriteLine("=== AUTO-BUILDING CONTAINER ===");
+                Console.WriteLine($"Container is being auto-built because ResolveAll({type.Name}, args) was called before BuildContainer().");
+                Console.WriteLine("Call stack:");
+                Console.WriteLine(stackTrace.ToString());
+                Console.WriteLine("================================");
+
+                BuildContainer();
+            }
+            var parameters = CreateNamedParameters(argumentsAsAnonymousType);
+            var enumerableType = typeof(IEnumerable<>).MakeGenericType(type);
+            return ((System.Collections.IEnumerable)IocContainer.Resolve(enumerableType, parameters)).Cast<object>().ToArray();
         }
 
         /// <summary>
@@ -256,27 +521,38 @@ namespace Abp.Dependency
         /// <param name="obj">Object to be released</param>
         public void Release(object obj)
         {
-            IocContainer.Release(obj);
+            // Autofac manages lifetimes automatically via scopes
+            // Explicit release is generally not needed for non-lifetime-scope managed instances
+            // However, we keep this method for API compatibility
         }
 
         /// <inheritdoc/>
         public void Dispose()
         {
-            IocContainer.Dispose();
+            IocContainer?.Dispose();
         }
 
-        private static ComponentRegistration<T> ApplyLifestyle<T>(ComponentRegistration<T> registration, DependencyLifeStyle lifeStyle)
-            where T : class
+        private IEnumerable<NamedParameter> CreateNamedParameters(object argumentsAsAnonymousType)
+        {
+            var props = argumentsAsAnonymousType.GetType().GetProperties();
+            return props.Select(p => new NamedParameter(p.Name, p.GetValue(argumentsAsAnonymousType)));
+        }
+
+        private void ApplyLifestyle<TLimit, TActivatorData, TRegistrationStyle>(
+            IRegistrationBuilder<TLimit, TActivatorData, TRegistrationStyle> registration,
+            DependencyLifeStyle lifeStyle)
         {
             switch (lifeStyle)
             {
                 case DependencyLifeStyle.Transient:
-                    return registration.LifestyleTransient();
+                    registration.InstancePerDependency();
+                    break;
                 case DependencyLifeStyle.Singleton:
-                    return registration.LifestyleSingleton();
-                default:
-                    return registration;
+                    registration.SingleInstance();
+                    break;
             }
         }
+
+
     }
 }

@@ -8,20 +8,21 @@ namespace Abp.Hangfire
     [DependsOn(typeof(AbpKernelModule))]
     public class AbpHangfireModule : AbpModule
     {
-        public override void PreInitialize()
-        {
+        public override void ConfigureServices() {
             IocManager.Register<IAbpHangfireConfiguration, AbpHangfireConfiguration>();
-            
+
             Configuration.Modules
                 .AbpHangfire()
                 .GlobalConfiguration
                 .UseActivator(new HangfireIocJobActivator(IocManager));
+            IocManager.RegisterAssemblyByConvention(typeof(AbpHangfireModule).GetAssembly());
+
+            GlobalJobFilters.Filters.Add(IocManager.Resolve<AbpHangfireJobExceptionFilter>());
+
         }
 
         public override void Initialize()
         {
-            IocManager.RegisterAssemblyByConvention(typeof(AbpHangfireModule).GetAssembly());
-            GlobalJobFilters.Filters.Add(IocManager.Resolve<AbpHangfireJobExceptionFilter>());
         }
     }
 }

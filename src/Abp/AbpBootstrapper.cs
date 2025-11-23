@@ -1,5 +1,6 @@
-﻿using System;
+using System;
 using System.Reflection;
+using Microsoft.Extensions.Logging;
 using Abp.Auditing;
 using Abp.Authorization;
 using Abp.Configuration.Startup;
@@ -8,10 +9,8 @@ using Abp.Dependency.Installers;
 using Abp.Domain.Uow;
 using Abp.EntityHistory;
 using Abp.Modules;
-using Abp.PlugIns;
 using Abp.Runtime.Validation.Interception;
-using Castle.Core.Logging;
-using Castle.MicroKernel.Registration;
+using Autofac;
 using JetBrains.Annotations;
 
 namespace Abp
@@ -27,11 +26,6 @@ namespace Abp
         /// Get the startup module of the application which depends on other used modules.
         /// </summary>
         public Type StartupModule { get; }
-
-        /// <summary>
-        /// A list of plug in folders.
-        /// </summary>
-        public PlugInSourceList PlugInSources { get; }
 
         /// <summary>
         /// Gets IIocManager object used by this class.
@@ -52,7 +46,7 @@ namespace Abp
         /// <param name="startupModule">Startup module of the application which depends on other used modules. Should be derived from <see cref="AbpModule"/>.</param>
         /// <param name="optionsAction">An action to set options</param>
         private AbpBootstrapper(
-            [NotNull] Type startupModule, 
+            [NotNull] Type startupModule,
             [CanBeNull] Action<AbpBootstrapperOptions> optionsAction = null)
         {
             Check.NotNull(startupModule, nameof(startupModule));
@@ -68,10 +62,9 @@ namespace Abp
             StartupModule = startupModule;
 
             IocManager = options.IocManager;
-            PlugInSources = options.PlugInSources;
 
-            _logger = NullLogger.Instance;
-            
+            _logger = null;
+
             AddInterceptorRegistrars(options.InterceptorOptions);
         }
 
@@ -102,34 +95,44 @@ namespace Abp
         private void AddInterceptorRegistrars(
             AbpBootstrapperInterceptorOptions options)
         {
+            // Note: Interceptors are now registered automatically via BasicConventionalRegistrar
+            // using Autofac.Extras.DynamicProxy's EnableInterfaceInterceptors/EnableClassInterceptors
+            // The registrars below are kept for backwards compatibility but don't do anything
+
             if (!options.DisableValidationInterceptor)
             {
-                ValidationInterceptorRegistrar.Initialize(IocManager);    
+                // Validation interceptor is automatically applied via BasicConventionalRegistrar
+                ValidationInterceptorRegistrar.Initialize(IocManager);
             }
 
             if (!options.DisableAuditingInterceptor)
             {
+                // Auditing interceptor is automatically applied via BasicConventionalRegistrar
                 AuditingInterceptorRegistrar.Initialize(IocManager);
             }
 
             if (!options.DisableEntityHistoryInterceptor)
             {
-                EntityHistoryInterceptorRegistrar.Initialize(IocManager);    
+                // EntityHistory interceptor is automatically applied via BasicConventionalRegistrar
+                EntityHistoryInterceptorRegistrar.Initialize(IocManager);
             }
 
             if (!options.DisableUnitOfWorkInterceptor)
             {
+                // UnitOfWork interceptor is automatically applied via BasicConventionalRegistrar
                 UnitOfWorkRegistrar.Initialize(IocManager);
             }
 
             if (!options.DisableAuthorizationInterceptor)
             {
-                AuthorizationInterceptorRegistrar.Initialize(IocManager);   
+                // Authorization interceptor is automatically applied via BasicConventionalRegistrar
+                AuthorizationInterceptorRegistrar.Initialize(IocManager);
             }
         }
 
         /// <summary>
         /// Initializes the ABP system.
+        /// This method should be called after the container is built.
         /// </summary>
         public virtual void Initialize()
         {
@@ -137,19 +140,25 @@ namespace Abp
 
             try
             {
-                RegisterBootstrapper();
-                IocManager.IocContainer.Install(new AbpCoreInstaller());
+                // Verify container is built before proceeding
+                var iocMgr = (IocManager)IocManager;
+                if (!iocMgr.IsContainerBuilt)
+                {
+                    throw new AbpInitializationException(
+                        "Container must be built before calling Initialize(). " +
+                        "Ensure that the container has been built (e.g., via AddAbp() in ASP.NET Core) " +
+                        "before calling Initialize().");
+                }
 
-                IocManager.Resolve<AbpPlugInManager>().PlugInSources.AddRange(PlugInSources);
                 IocManager.Resolve<AbpStartupConfiguration>().Initialize();
 
+                // Resolve module manager from container and start modules
                 _moduleManager = IocManager.Resolve<AbpModuleManager>();
-                _moduleManager.Initialize(StartupModule);
                 _moduleManager.StartModules();
             }
             catch (Exception ex)
             {
-                _logger.Fatal(ex.ToString(), ex);
+                _logger?.LogCritical(ex, "ABP initialization failed");
                 throw;
             }
         }
@@ -158,7 +167,8 @@ namespace Abp
         {
             if (IocManager.IsRegistered<ILoggerFactory>())
             {
-                _logger = IocManager.Resolve<ILoggerFactory>().Create(typeof(AbpBootstrapper));
+                var factory = IocManager.Resolve<ILoggerFactory>();
+                _logger = factory.CreateLogger(typeof(AbpBootstrapper).FullName);
             }
         }
 
@@ -166,9 +176,7 @@ namespace Abp
         {
             if (!IocManager.IsRegistered<AbpBootstrapper>())
             {
-                IocManager.IocContainer.Register(
-                    Component.For<AbpBootstrapper>().Instance(this)
-                );
+                ((IocManager)IocManager).Builder.RegisterInstance(this).As<AbpBootstrapper>();
             }
         }
 

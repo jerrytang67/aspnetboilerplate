@@ -15,6 +15,7 @@ namespace Abp.EntityFrameworkCore.Uow;
 /// </summary>
 public class EfCoreUnitOfWork : UnitOfWorkBase, ITransientDependency
 {
+
     protected IDictionary<string, DbContext> ActiveDbContexts { get; }
 
     protected IIocResolver IocResolver { get; }

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
@@ -7,7 +7,7 @@ using Abp.Dependency;
 using Abp.Runtime.Caching;
 using Abp.Runtime.Caching.Configuration;
 using Abp.Runtime.Caching.Memory;
-using Castle.MicroKernel.Registration;
+using Autofac;
 using NSubstitute;
 using Shouldly;
 using Xunit;
@@ -24,7 +24,10 @@ namespace Abp.Tests.Runtime.Caching.Memory
             LocalIocManager.Register<ICachingConfiguration, CachingConfiguration>();
             LocalIocManager.Register<ICacheManager, AbpMemoryCacheManager>();
             LocalIocManager.Register<MyClientPropertyInjects>(DependencyLifeStyle.Transient);
-            LocalIocManager.IocContainer.Register(Component.For<IAbpStartupConfiguration>().Instance(Substitute.For<IAbpStartupConfiguration>()));
+
+            var iocMgr = (IocManager)LocalIocManager;
+            iocMgr.Builder.RegisterInstance(Substitute.For<IAbpStartupConfiguration>()).As<IAbpStartupConfiguration>();
+            iocMgr.BuildContainer();
 
             _cacheManager = LocalIocManager.Resolve<ICacheManager>();
 

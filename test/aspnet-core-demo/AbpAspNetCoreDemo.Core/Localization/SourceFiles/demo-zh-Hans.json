@@ -1,0 +1,8 @@
+﻿{
+  "culture": "zh-Hans",
+  "texts": {
+    "HelloWorld": "Hello World!",
+    "WelcomeMessage": "Welcome to ABP AspNet Core Demo application.",
+    "AboutDescription":  "你好你好"
+  }
+}

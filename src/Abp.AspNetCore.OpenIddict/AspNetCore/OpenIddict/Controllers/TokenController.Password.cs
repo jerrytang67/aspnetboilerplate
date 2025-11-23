@@ -11,6 +11,7 @@ using Abp.Runtime.Security;
 using Abp.Runtime.Session;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
 using Microsoft.VisualBasic;
 using OpenIddict.Abstractions;
 using OpenIddict.Server.AspNetCore;
@@ -40,7 +41,7 @@ public partial class TokenController<TTenant, TRole, TUser>
                     string errorDescription;
                     if (result.IsLockedOut)
                     {
-                        Logger.Warn(Strings.Format(
+                        Logger.LogWarning(Strings.Format(
                             "Authentication failed for username: {username}, reason: locked out",
                             request.Username
                         ));
@@ -49,7 +50,7 @@ public partial class TokenController<TTenant, TRole, TUser>
                     }
                     else if (result.IsNotAllowed)
                     {
-                        Logger.Warn(string.Format(
+                        Logger.LogWarning(string.Format(
                             "Authentication failed for username: {username}, reason: not allowed",
                             request.Username));
                         errorDescription =
@@ -57,7 +58,7 @@ public partial class TokenController<TTenant, TRole, TUser>
                     }
                     else
                     {
-                        Logger.Warn(string.Format(
+                        Logger.LogWarning(string.Format(
                             "Authentication failed for username: {username}, reason: invalid credentials",
                             request.Username
                         ));
@@ -77,7 +78,7 @@ public partial class TokenController<TTenant, TRole, TUser>
                 return await SetSuccessResultAsync(request, user);
             }
 
-            Logger.Error(string.Format("No user found matching username: {username}", request.Username));
+            Logger.LogError(string.Format("No user found matching username: {username}", request.Username));
 
             return Forbid(new AuthenticationProperties(new Dictionary<string, string>
             {

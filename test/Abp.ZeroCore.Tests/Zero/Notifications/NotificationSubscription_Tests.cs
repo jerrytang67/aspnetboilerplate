@@ -1,8 +1,9 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using Abp.Dependency;
 using Abp.Notifications;
 using Abp.Runtime.Session;
-using Castle.MicroKernel.Registration;
+using Autofac;
 using Shouldly;
 using Xunit;
 
@@ -40,12 +41,11 @@ public class NotificationSubscription_Tests : AbpZeroTestBase
     {
         // Use DefaultNotificationDistributer 
         var defaultNotificationDistributor = LocalIocManager.Resolve<DefaultNotificationDistributer>();
-        LocalIocManager.IocContainer.Register(
-            Component.For<INotificationDistributer>().Instance(defaultNotificationDistributor)
-                .LifestyleSingleton()
-                .IsDefault()
-                .Named("DefaultNotificationDistributer")
-        );
+        var iocMgr = (IocManager)LocalIocManager;
+        iocMgr.Builder.RegisterInstance(defaultNotificationDistributor)
+            .As<INotificationDistributer>()
+            .SingleInstance()
+            .Named<INotificationDistributer>("DefaultNotificationDistributer");
 
         // Add notifiers
         var notificationConfiguration = LocalIocManager.Resolve<INotificationConfiguration>();
@@ -57,14 +57,13 @@ public class NotificationSubscription_Tests : AbpZeroTestBase
 
     private void RegisterRealTimeNotifiers(List<IRealTimeNotifier> realTimeNotifiers)
     {
+        var iocMgr = (IocManager)LocalIocManager;
         foreach (var realTimeNotifier in realTimeNotifiers)
         {
             var realTimeNotifierType = realTimeNotifier.GetType();
-            LocalIocManager.IocContainer.Register(
-                Component.For(realTimeNotifierType)
-                    .Instance(realTimeNotifier)
-                    .LifestyleSingleton()
-            );
+            iocMgr.Builder.RegisterInstance(realTimeNotifier)
+                .As(realTimeNotifierType)
+                .SingleInstance();
         }
     }
 

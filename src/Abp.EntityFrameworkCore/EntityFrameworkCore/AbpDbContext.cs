@@ -5,6 +5,7 @@ using System.Linq.Expressions;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 using Abp.Collections.Extensions;
 using Abp.Configuration.Startup;
 using Abp.Dependency;
@@ -23,7 +24,7 @@ using Abp.Extensions;
 using Abp.Linq.Expressions;
 using Abp.Runtime.Session;
 using Abp.Timing;
-using Castle.Core.Logging;
+using Abp.Logging;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Infrastructure;
@@ -129,11 +130,11 @@ public abstract class AbpDbContext : DbContext, ITransientDependency, IShouldIni
         {
             ConfigureGlobalFiltersMethodInfo
                 .MakeGenericMethod(entityType.ClrType)
-                .Invoke(this, new object[] { modelBuilder, entityType });
+                .Invoke(this, [modelBuilder, entityType]);
 
             ConfigureGlobalValueConverterMethodInfo
                 .MakeGenericMethod(entityType.ClrType)
-                .Invoke(this, new object[] { modelBuilder, entityType });
+                .Invoke(this, [modelBuilder, entityType]);
         }
     }
 

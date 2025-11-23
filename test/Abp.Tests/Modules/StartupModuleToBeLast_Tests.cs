@@ -1,7 +1,7 @@
 ﻿using System.Linq;
 
+using Abp.Dependency;
 using Abp.Modules;
-using Abp.PlugIns;
 
 using Shouldly;
 
@@ -19,6 +19,10 @@ namespace Abp.Tests.Modules
             {
                 options.IocManager = LocalIocManager;
             });
+
+
+            // Build container before calling Initialize (two-phase lifecycle)
+            ((IocManager)LocalIocManager).BuildContainer();
             bootstrapper.Initialize();
 
             //Act
@@ -45,8 +49,9 @@ namespace Abp.Tests.Modules
                 options.IocManager = LocalIocManager;
             });
 
-            bootstrapper.PlugInSources.AddTypeList(typeof(MyPlugInModule));
 
+            // Build container before calling Initialize (two-phase lifecycle)
+            ((IocManager)LocalIocManager).BuildContainer();
             bootstrapper.Initialize();
 
             var modules = bootstrapper.IocManager.Resolve<IAbpModuleManager>().Modules;

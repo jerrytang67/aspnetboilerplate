@@ -2,9 +2,6 @@ using System;
 using System.Threading;
 using Abp.AspNetCore;
 using Abp.AspNetCore.Configuration;
-using Abp.AspNetCore.OData;
-using Abp.AspNetCore.OData.ResultWrapping;
-using Abp.Castle.Logging.Log4Net;
 using Abp.Configuration.Startup;
 using Abp.Dependency;
 using Abp.EntityFrameworkCore;
@@ -16,7 +13,7 @@ using Abp.Reflection.Extensions;
 using AbpAspNetCoreDemo.Core;
 using AbpAspNetCoreDemo.Core.Application.Account;
 using AbpAspNetCoreDemo.Db;
-using Castle.MicroKernel.Registration;
+using Autofac;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
@@ -26,67 +23,91 @@ namespace AbpAspNetCoreDemo;
 
 [DependsOn(
     typeof(AbpAspNetCoreModule),
-    typeof(AbpAspNetCoreDemoCoreModule),
     typeof(AbpEntityFrameworkCoreModule),
-    typeof(AbpCastleLog4NetModule),
-    typeof(AbpAspNetCoreODataModule),
-    typeof(AbpHtmlSanitizerModule)
+    typeof(AbpHtmlSanitizerModule),
+    typeof(AbpAspNetCoreDemoCoreModule)
 )]
-public class AbpAspNetCoreDemoModule : AbpModule
-{
+public class AbpAspNetCoreDemoModule : AbpModule {
     public static AsyncLocal<Action<IAbpStartupConfiguration>> ConfigurationAction =
         new AsyncLocal<Action<IAbpStartupConfiguration>>();
 
-    public override void PreInitialize()
-    {
+    public override void ConfigureServices() {
+        // PHASE 1: Service Configuration (Before Container Build)
+
+        // Register DbContext
         RegisterDbContextToSqliteInMemoryDb(IocManager);
+
+        // Register assembly by convention
+        IocManager.RegisterAssemblyByConvention(typeof(AbpAspNetCoreDemoModule).GetAssembly());
+    }
+
+
+    public override void Initialize() {
+        // TEST: Print all ApplicationService classes found in this assembly
+        TestAssemblyScanning.PrintApplicationServices();
+
+        // Configure caching
+        Configuration.Caching.MemoryCacheOptions = new MemoryCacheOptions {
+            SizeLimit = 2048
+        };
+
+        // Enable detailed error information
+        Configuration.Modules.AbpWebCommon().SendAllExceptionsToClients = true;
+        
+        // Log all exceptions with details
+        Configuration.Modules.AbpAspNetCore().DefaultWrapResultAttribute.LogError = true;
 
         Configuration.Modules.AbpAspNetCore()
             .CreateControllersForAppServices(
-                typeof(AbpAspNetCoreDemoCoreModule).GetAssembly()
-            );
+                typeof(AbpAspNetCoreDemoModule).GetAssembly(),
+                "app", useConventionalHttpVerbs: true);
 
-        Configuration.Modules.AbpWebCommon().WrapResultFilters.Add(new AbpODataDontWrapResultFilter());
+        var s = IocManager.Resolve<IAbpAspNetCoreConfiguration>() as AbpAspNetCoreConfiguration;
 
-        Configuration.IocManager.Resolve<IAbpAspNetCoreConfiguration>().EndpointConfiguration.Add(endpoints =>
-        {
+        var list2 = s.ControllerAssemblySettings;
+
+        ConfigurationAction.Value?.Invoke(Configuration);
+
+        // PHASE 2: Application Initialization (After Container Build)
+
+        // Configure endpoint routing (requires resolved services)
+        var aspNetCoreConfig = IocManager.Resolve<IAbpAspNetCoreConfiguration>();
+        aspNetCoreConfig.EndpointConfiguration.Add(endpoints => {
             endpoints.MapControllerRoute("defaultWithArea", "{area}/{controller=Home}/{action=Index}/{id?}");
             endpoints.MapControllerRoute("default", "{controller=Home}/{action=Index}/{id?}");
             endpoints.MapRazorPages();
         });
-
-        Configuration.Caching.MemoryCacheOptions = new MemoryCacheOptions
-        {
-            SizeLimit = 2048
-        };
-
-        ConfigurationAction.Value?.Invoke(Configuration);
-
-        Configuration.Modules.AbpHtmlSanitizer()
-            .AddSelector<IAccountAppService>(x => nameof(x.Register));
     }
 
-    public override void Initialize()
-    {
-        IocManager.RegisterAssemblyByConvention(typeof(AbpAspNetCoreDemoModule).GetAssembly());
-    }
+    private static SqliteConnection _inMemorySqlite;
+    private static bool _databaseCreated = false;
 
-    private static void RegisterDbContextToSqliteInMemoryDb(IIocManager iocManager)
-    {
+    private static void RegisterDbContextToSqliteInMemoryDb(IIocManager iocManager) {
         var builder = new DbContextOptionsBuilder<MyDbContext>();
 
-        var inMemorySqlite = new SqliteConnection("Data Source=:memory:");
-        builder.UseSqlite(inMemorySqlite).AddAbpDbContextOptionsExtension();
+        _inMemorySqlite = new SqliteConnection("Data Source=:memory:");
+        builder.UseSqlite(_inMemorySqlite).AddAbpDbContextOptionsExtension();
 
-        iocManager.IocContainer.Register(
-            Component
-                .For<DbContextOptions<MyDbContext>>()
-                .Instance(builder.Options)
-                .LifestyleSingleton()
-        );
+        var iocMgr = (IocManager)iocManager;
+        iocMgr.Builder.RegisterInstance(builder.Options)
+            .As<DbContextOptions<MyDbContext>>()
+            .SingleInstance();
 
-        inMemorySqlite.Open();
-        var ctx = new MyDbContext(builder.Options);
-        ctx.Database.EnsureCreated();
+        // Open connection to keep the in-memory database alive
+        _inMemorySqlite.Open();
+
+        // Register DbContext with lazy database creation
+        iocMgr.Builder.Register(c => {
+            var options = c.Resolve<DbContextOptions<MyDbContext>>();
+            var ctx = new MyDbContext(options);
+
+            // Create database schema on first access
+            if (!_databaseCreated) {
+                ctx.Database.EnsureCreated();
+                _databaseCreated = true;
+            }
+
+            return ctx;
+        }).As<MyDbContext>().InstancePerLifetimeScope();
     }
 }

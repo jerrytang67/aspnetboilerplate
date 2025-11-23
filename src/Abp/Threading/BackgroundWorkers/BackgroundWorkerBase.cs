@@ -1,19 +1,19 @@
 using System.Globalization;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 using Abp.Configuration;
+using Abp.Dependency;
 using Abp.Domain.Uow;
 using Abp.Localization;
 using Abp.Localization.Sources;
-using Castle.Core.Logging;
+using Abp.Logging;
 
-namespace Abp.Threading.BackgroundWorkers
-{
+namespace Abp.Threading.BackgroundWorkers {
     /// <summary>
     /// Base class that can be used to implement <see cref="IBackgroundWorker"/>.
     /// </summary>
-    public abstract class BackgroundWorkerBase : RunnableBase, IBackgroundWorker
-    {
+    public abstract class BackgroundWorkerBase : RunnableBase, IBackgroundWorker {
         /// <summary>
         /// Reference to the setting manager.
         /// </summary>
@@ -22,12 +22,9 @@ namespace Abp.Threading.BackgroundWorkers
         /// <summary>
         /// Reference to <see cref="IUnitOfWorkManager"/>.
         /// </summary>
-        public IUnitOfWorkManager UnitOfWorkManager
-        {
-            get
-            {
-                if (_unitOfWorkManager == null)
-                {
+        public IUnitOfWorkManager UnitOfWorkManager {
+            get {
+                if (_unitOfWorkManager == null) {
                     throw new AbpException("Must set UnitOfWorkManager before use it.");
                 }
 
@@ -35,12 +32,15 @@ namespace Abp.Threading.BackgroundWorkers
             }
             set { _unitOfWorkManager = value; }
         }
+
         private IUnitOfWorkManager _unitOfWorkManager;
 
         /// <summary>
         /// Gets current unit of work.
         /// </summary>
-        protected IActiveUnitOfWork CurrentUnitOfWork { get { return UnitOfWorkManager.Current; } }
+        protected IActiveUnitOfWork CurrentUnitOfWork {
+            get { return UnitOfWorkManager.Current; }
+        }
 
         /// <summary>
         /// Reference to the localization manager.
@@ -57,23 +57,20 @@ namespace Abp.Threading.BackgroundWorkers
         /// Gets localization source.
         /// It's valid if <see cref="LocalizationSourceName"/> is set.
         /// </summary>
-        protected ILocalizationSource LocalizationSource
-        {
-            get
-            {
-                if (LocalizationSourceName == null)
-                {
+        protected ILocalizationSource LocalizationSource {
+            get {
+                if (LocalizationSourceName == null) {
                     throw new AbpException("Must set LocalizationSourceName before, in order to get LocalizationSource");
                 }
 
-                if (_localizationSource == null || _localizationSource.Name != LocalizationSourceName)
-                {
+                if (_localizationSource == null || _localizationSource.Name != LocalizationSourceName) {
                     _localizationSource = LocalizationManager.GetSource(LocalizationSourceName);
                 }
 
                 return _localizationSource;
             }
         }
+
         private ILocalizationSource _localizationSource;
 
         /// <summary>
@@ -84,28 +81,24 @@ namespace Abp.Threading.BackgroundWorkers
         /// <summary>
         /// Constructor.
         /// </summary>
-        protected BackgroundWorkerBase()
-        {
-            Logger = NullLogger.Instance;
+        protected BackgroundWorkerBase(IIocManager iocManager) {
+            Logger = iocManager.Resolve<ILoggerFactory>().CreateLogger<BackgroundWorkerBase>();
             LocalizationManager = NullLocalizationManager.Instance;
         }
 
-        public override void Start()
-        {
+        public override void Start() {
             base.Start();
-            Logger.Debug("Start background worker: " + ToString());
+            Logger.LogDebug("Start background worker: " + ToString());
         }
 
-        public override void Stop()
-        {
+        public override void Stop() {
             base.Stop();
-            Logger.Debug("Stop background worker: " + ToString());
+            Logger.LogDebug("Stop background worker: " + ToString());
         }
 
-        public override void WaitToStop()
-        {
+        public override void WaitToStop() {
             base.WaitToStop();
-            Logger.Debug("WaitToStop background worker: " + ToString());
+            Logger.LogDebug("WaitToStop background worker: " + ToString());
         }
 
         /// <summary>
@@ -113,8 +106,7 @@ namespace Abp.Threading.BackgroundWorkers
         /// </summary>
         /// <param name="name">Key name</param>
         /// <returns>Localized string</returns>
-        protected virtual string L(string name)
-        {
+        protected virtual string L(string name) {
             return LocalizationSource.GetString(name);
         }
 
@@ -124,8 +116,7 @@ namespace Abp.Threading.BackgroundWorkers
         /// <param name="name">Key name</param>
         /// <param name="args">Format arguments</param>
         /// <returns>Localized string</returns>
-        protected virtual string L(string name, params object[] args)
-        {
+        protected virtual string L(string name, params object[] args) {
             return LocalizationSource.GetString(name, args);
         }
 
@@ -135,8 +126,7 @@ namespace Abp.Threading.BackgroundWorkers
         /// <param name="name">Key name</param>
         /// <param name="culture">culture information</param>
         /// <returns>Localized string</returns>
-        protected virtual string L(string name, CultureInfo culture)
-        {
+        protected virtual string L(string name, CultureInfo culture) {
             return LocalizationSource.GetString(name, culture);
         }
 
@@ -147,13 +137,11 @@ namespace Abp.Threading.BackgroundWorkers
         /// <param name="culture">culture information</param>
         /// <param name="args">Format arguments</param>
         /// <returns>Localized string</returns>
-        protected virtual string L(string name, CultureInfo culture, params object[] args)
-        {
+        protected virtual string L(string name, CultureInfo culture, params object[] args) {
             return LocalizationSource.GetString(name, culture, args);
         }
 
-        public override string ToString()
-        {
+        public override string ToString() {
             return GetType().FullName;
         }
     }

@@ -1,5 +1,4 @@
 ﻿using Abp.Dependency;
-using Abp.PlugIns;
 
 namespace Abp
 {
@@ -15,15 +14,9 @@ namespace Abp
         /// </summary>
         public IIocManager IocManager { get; set; }
 
-        /// <summary>
-        /// List of plugin sources.
-        /// </summary>
-        public PlugInSourceList PlugInSources { get; }
-
         public AbpBootstrapperOptions()
         {
             IocManager = Abp.Dependency.IocManager.Instance;
-            PlugInSources = new PlugInSourceList();
             InterceptorOptions = new AbpBootstrapperInterceptorOptions();
         }
     }

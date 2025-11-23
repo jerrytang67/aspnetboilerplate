@@ -15,7 +15,6 @@ using Abp.ZeroCore.SampleApp.Core.Shop;
 using Abp.ZeroCore.SampleApp.EntityFramework;
 using Abp.ZeroCore.SampleApp.EntityFramework.Seed;
 using AutoMapper;
-using Castle.MicroKernel.Registration;
 
 namespace Abp.ZeroCore.SampleApp;
 
@@ -25,8 +24,10 @@ public class AbpZeroCoreSampleAppModule : AbpModule
     /* Used it tests to skip dbcontext registration, in order to use in-memory database of EF Core */
     public bool SkipDbContextRegistration { get; set; }
 
-    public override void PreInitialize()
-    {
+    public override void ConfigureServices() {
+        IocManager.RegisterAssemblyByConvention(typeof(AbpZeroCoreSampleAppModule).GetAssembly());
+
+
         if (!SkipDbContextRegistration)
         {
             Configuration.Modules.AbpEfCore().AddDbContext<SampleAppDbContext>(configuration =>
@@ -44,12 +45,17 @@ public class AbpZeroCoreSampleAppModule : AbpModule
         Configuration.CustomConfigProviders.Add(new TestCustomConfigProvider2());
 
         Configuration.Modules.AbpEfCore().UseAbpQueryCompiler = true;
+
+        Configuration.Modules.AbpAutoMapper().Configurators.Add(configuration =>
+        {
+            CustomDtoMapper.CreateMappings(configuration, new MultiLingualMapContext(
+                IocManager.Resolve<ISettingManager>()
+            ));
+        });
     }
 
     public override void Initialize()
     {
-        IocManager.RegisterAssemblyByConvention(typeof(AbpZeroCoreSampleAppModule).GetAssembly());
-
         var genericRepositoryRegistarar = IocManager.Resolve<EfGenericRepositoryRegistrar>();
 
         genericRepositoryRegistarar.RegisterForEntity(
@@ -66,16 +72,6 @@ public class AbpZeroCoreSampleAppModule : AbpModule
             EfCoreAutoRepositoryTypes.Default
         );
 
-        Configuration.Modules.AbpAutoMapper().Configurators.Add(configuration =>
-        {
-            CustomDtoMapper.CreateMappings(configuration, new MultiLingualMapContext(
-                IocManager.Resolve<ISettingManager>()
-            ));
-        });
-    }
-
-    public override void PostInitialize()
-    {
         SeedHelper.SeedHostDb(IocManager);
     }
 }

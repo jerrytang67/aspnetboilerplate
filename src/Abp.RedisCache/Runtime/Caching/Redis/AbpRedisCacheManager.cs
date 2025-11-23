@@ -17,7 +17,8 @@ namespace Abp.Runtime.Caching.Redis
             : base(configuration)
         {
             _iocManager = iocManager;
-            _iocManager.RegisterIfNot<AbpRedisCache>(DependencyLifeStyle.Transient);
+            // Note: AbpRedisCache is now registered in AbpRedisCacheModule.ConfigureServices()
+            // to comply with the two-phase lifecycle (no registrations after container build)
         }
 
         protected override ICache CreateCacheImplementation(string name)

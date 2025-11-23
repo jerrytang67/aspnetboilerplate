@@ -1,6 +1,6 @@
-﻿using System.Linq;
+using System.Linq;
 using Abp.Dependency;
-using Castle.MicroKernel.Registration;
+using Autofac;
 using Shouldly;
 using Xunit;
 
@@ -18,7 +18,7 @@ namespace Abp.Tests.Dependency
 
             //Act
             var service = LocalIocManager.Resolve<IMyService>();
-            var allServices = LocalIocManager.IocContainer.ResolveAll<IMyService>();
+            var allServices = LocalIocManager.ResolveAll<IMyService>();
 
             //Assert
             service.ShouldBeOfType<MyImpl1>();
@@ -29,15 +29,18 @@ namespace Abp.Tests.Dependency
         }
 
         [Fact]
-        public void Should_Override_When_Using_IsDefault()
+        public void Should_Override_When_Using_Last_Registration()
         {
             //Arrange
-            LocalIocManager.IocContainer.Register(Component.For<IMyService>().ImplementedBy<MyImpl1>().LifestyleTransient());
-            LocalIocManager.IocContainer.Register(Component.For<IMyService>().ImplementedBy<MyImpl2>().LifestyleTransient().IsDefault());
+            // In Autofac, later registrations override earlier ones unless PreserveExistingDefaults is used
+            var iocMgr = (IocManager)LocalIocManager;
+            iocMgr.Builder.RegisterType<MyImpl1>().As<IMyService>().InstancePerDependency().PreserveExistingDefaults();
+            iocMgr.Builder.RegisterType<MyImpl2>().As<IMyService>().InstancePerDependency();
+            iocMgr.BuildContainer();
 
             //Act
             var service = LocalIocManager.Resolve<IMyService>();
-            var allServices = LocalIocManager.IocContainer.ResolveAll<IMyService>();
+            var allServices = LocalIocManager.ResolveAll<IMyService>();
 
             //Assert
             service.ShouldBeOfType<MyImpl2>();
@@ -47,16 +50,18 @@ namespace Abp.Tests.Dependency
         }
 
         [Fact]
-        public void Should_Override_When_Using_IsDefault_Twice()
+        public void Should_Override_When_Using_Last_Registration_Multiple()
         {
             //Arrange
-            LocalIocManager.IocContainer.Register(Component.For<IMyService>().ImplementedBy<MyImpl1>().LifestyleTransient());
-            LocalIocManager.IocContainer.Register(Component.For<IMyService>().ImplementedBy<MyImpl2>().LifestyleTransient().IsDefault());
-            LocalIocManager.IocContainer.Register(Component.For<IMyService>().ImplementedBy<MyImpl3>().LifestyleTransient().IsDefault());
+            var iocMgr = (IocManager)LocalIocManager;
+            iocMgr.Builder.RegisterType<MyImpl1>().As<IMyService>().InstancePerDependency().PreserveExistingDefaults();
+            iocMgr.Builder.RegisterType<MyImpl2>().As<IMyService>().InstancePerDependency().PreserveExistingDefaults();
+            iocMgr.Builder.RegisterType<MyImpl3>().As<IMyService>().InstancePerDependency();
+            iocMgr.BuildContainer();
 
             //Act
             var service = LocalIocManager.Resolve<IMyService>();
-            var allServices = LocalIocManager.IocContainer.ResolveAll<IMyService>();
+            var allServices = LocalIocManager.ResolveAll<IMyService>();
 
             //Assert
             service.ShouldBeOfType<MyImpl3>();
@@ -67,16 +72,18 @@ namespace Abp.Tests.Dependency
         }
 
         [Fact]
-        public void Should_Get_Default_Service()
+        public void Should_Get_Specific_Default_Service()
         {
             //Arrange
-            LocalIocManager.IocContainer.Register(Component.For<IMyService>().ImplementedBy<MyImpl1>().LifestyleTransient());
-            LocalIocManager.IocContainer.Register(Component.For<IMyService>().ImplementedBy<MyImpl2>().LifestyleTransient().IsDefault());
-            LocalIocManager.IocContainer.Register(Component.For<IMyService>().ImplementedBy<MyImpl3>().LifestyleTransient());
+            var iocMgr = (IocManager)LocalIocManager;
+            iocMgr.Builder.RegisterType<MyImpl1>().As<IMyService>().InstancePerDependency().PreserveExistingDefaults();
+            iocMgr.Builder.RegisterType<MyImpl2>().As<IMyService>().InstancePerDependency();
+            iocMgr.Builder.RegisterType<MyImpl3>().As<IMyService>().InstancePerDependency().PreserveExistingDefaults();
+            iocMgr.BuildContainer();
 
             //Act
             var service = LocalIocManager.Resolve<IMyService>();
-            var allServices = LocalIocManager.IocContainer.ResolveAll<IMyService>();
+            var allServices = LocalIocManager.ResolveAll<IMyService>();
 
             //Assert
             service.ShouldBeOfType<MyImpl2>();
@@ -88,7 +95,7 @@ namespace Abp.Tests.Dependency
 
         public class MyImpl1 : IMyService
         {
-            
+
         }
 
         public class MyImpl2 : IMyService

@@ -1,5 +1,6 @@
 using System.Net;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 using Abp.AspNetCore.Configuration;
 using Abp.AspNetCore.Mvc.Results;
 using Abp.Authorization;
@@ -13,86 +14,60 @@ using Abp.Runtime;
 using Abp.Runtime.Validation;
 using Abp.Web.Configuration;
 using Abp.Web.Models;
-using Castle.Core.Logging;
 using Microsoft.AspNetCore.Http.Extensions;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
 
 namespace Abp.AspNetCore.Mvc.ExceptionHandling;
 
-public class AbpExceptionPageFilter : IAsyncPageFilter, ITransientDependency
-{
-    public ILogger Logger { get; set; }
-
-    public IEventBus EventBus { get; set; }
-
-    private readonly IErrorInfoBuilder _errorInfoBuilder;
-    private readonly IAbpAspNetCoreConfiguration _configuration;
-    private readonly IAbpWebCommonModuleConfiguration _abpWebCommonModuleConfiguration;
-
-    public AbpExceptionPageFilter(
-        IErrorInfoBuilder errorInfoBuilder,
-        IAbpAspNetCoreConfiguration configuration,
-        IAbpWebCommonModuleConfiguration abpWebCommonModuleConfiguration)
-    {
-        _errorInfoBuilder = errorInfoBuilder;
-        _configuration = configuration;
-        _abpWebCommonModuleConfiguration = abpWebCommonModuleConfiguration;
-
-        Logger = NullLogger.Instance;
-        EventBus = NullEventBus.Instance;
-    }
-
-    public Task OnPageHandlerSelectionAsync(PageHandlerSelectedContext context)
-    {
+public class AbpExceptionPageFilter(
+    IErrorInfoBuilder errorInfoBuilder,
+    IAbpAspNetCoreConfiguration configuration,
+    IAbpWebCommonModuleConfiguration abpWebCommonModuleConfiguration,
+    ILogger<AbpExceptionPageFilter> logger,
+    IEventBus eventBus)
+    : IAsyncPageFilter, ITransientDependency {
+    public Task OnPageHandlerSelectionAsync(PageHandlerSelectedContext context) {
         return Task.CompletedTask;
     }
 
     public async Task OnPageHandlerExecutionAsync(PageHandlerExecutingContext context,
-        PageHandlerExecutionDelegate next)
-    {
-        if (context.HandlerMethod == null)
-        {
+        PageHandlerExecutionDelegate next) {
+        if (context.HandlerMethod == null) {
             await next();
             return;
         }
 
         var pageHandlerExecutedContext = await next();
 
-        if (pageHandlerExecutedContext.Exception == null)
-        {
+        if (pageHandlerExecutedContext.Exception == null) {
             return;
         }
 
         var wrapResultAttribute = ReflectionHelper.GetSingleAttributeOfMemberOrDeclaringTypeOrDefault(
             context.HandlerMethod.MethodInfo,
-            _configuration.DefaultWrapResultAttribute
+            configuration.DefaultWrapResultAttribute
         );
 
-        if (wrapResultAttribute.LogError)
-        {
-            LogHelper.LogException(Logger, pageHandlerExecutedContext.Exception);
+        if (wrapResultAttribute.LogError) {
+            LogHelper.LogException(logger, pageHandlerExecutedContext.Exception);
         }
 
         HandleAndWrapException(pageHandlerExecutedContext, wrapResultAttribute);
     }
 
     protected virtual void HandleAndWrapException(PageHandlerExecutedContext context,
-        WrapResultAttribute wrapResultAttribute)
-    {
-        if (!ActionResultHelper.IsObjectResult(context.HandlerMethod.MethodInfo.ReturnType))
-        {
+        WrapResultAttribute wrapResultAttribute) {
+        if (!ActionResultHelper.IsObjectResult(context.HandlerMethod.MethodInfo.ReturnType)) {
             return;
         }
 
         var displayUrl = context.HttpContext.Request.GetDisplayUrl();
-        if (_abpWebCommonModuleConfiguration.WrapResultFilters.HasFilterForWrapOnError(displayUrl,
-            out var wrapOnError))
-        {
+        if (abpWebCommonModuleConfiguration.WrapResultFilters.HasFilterForWrapOnError(displayUrl,
+                out var wrapOnError)) {
             context.HttpContext.Response.StatusCode = GetStatusCode(context, wrapOnError);
 
-            if (!wrapOnError)
-            {
+            if (!wrapOnError) {
                 return;
             }
 
@@ -102,49 +77,42 @@ public class AbpExceptionPageFilter : IAsyncPageFilter, ITransientDependency
 
         context.HttpContext.Response.StatusCode = GetStatusCode(context, wrapResultAttribute.WrapOnError);
 
-        if (!wrapResultAttribute.WrapOnError)
-        {
+        if (!wrapResultAttribute.WrapOnError) {
             return;
         }
 
         HandleError(context);
     }
 
-    private void HandleError(PageHandlerExecutedContext context)
-    {
+    private void HandleError(PageHandlerExecutedContext context) {
         context.Result = new ObjectResult(
             new AjaxResponse(
-                _errorInfoBuilder.BuildForException(context.Exception),
+                errorInfoBuilder.BuildForException(context.Exception),
                 context.Exception is AbpAuthorizationException
             )
         );
 
-        EventBus.Trigger(this, new AbpHandledExceptionData(context.Exception));
+        eventBus.Trigger(this, new AbpHandledExceptionData(context.Exception));
 
         context.Exception = null; // Handled!
     }
 
-    protected virtual int GetStatusCode(PageHandlerExecutedContext context, bool wrapOnError)
-    {
-        if (context.Exception is AbpAuthorizationException)
-        {
+    protected virtual int GetStatusCode(PageHandlerExecutedContext context, bool wrapOnError) {
+        if (context.Exception is AbpAuthorizationException) {
             return context.HttpContext.User.Identity.IsAuthenticated
                 ? (int)HttpStatusCode.Forbidden
                 : (int)HttpStatusCode.Unauthorized;
         }
 
-        if (context.Exception is AbpValidationException)
-        {
+        if (context.Exception is AbpValidationException) {
             return (int)HttpStatusCode.BadRequest;
         }
 
-        if (context.Exception is EntityNotFoundException)
-        {
+        if (context.Exception is EntityNotFoundException) {
             return (int)HttpStatusCode.NotFound;
         }
 
-        if (wrapOnError)
-        {
+        if (wrapOnError) {
             return (int)HttpStatusCode.InternalServerError;
         }
 

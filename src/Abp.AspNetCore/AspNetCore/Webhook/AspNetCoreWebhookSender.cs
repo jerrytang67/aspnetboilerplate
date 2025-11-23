@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
+using Abp.Dependency;
 using Abp.Webhooks;
 
 namespace Abp.AspNetCore.Webhook;
@@ -15,8 +16,11 @@ public class AspNetCoreWebhookSender : DefaultWebhookSender
     public AspNetCoreWebhookSender(
         IWebhooksConfiguration webhooksConfiguration,
         IWebhookManager webhookManager,
-        IHttpClientFactory clientFactory)
-        : base(webhooksConfiguration, webhookManager)
+        IHttpClientFactory clientFactory,
+        IIocManager  iocManager
+
+        )
+        : base(webhooksConfiguration, webhookManager,iocManager)
     {
         _webhooksConfiguration = webhooksConfiguration;
         _clientFactory = clientFactory;

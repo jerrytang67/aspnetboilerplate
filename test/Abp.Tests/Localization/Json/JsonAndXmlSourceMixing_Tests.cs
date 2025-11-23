@@ -56,32 +56,30 @@ namespace Abp.Tests.Localization.Json
 
     public class MyLangModule : AbpModule
     {
-        public override void PreInitialize()
-        {
+        public override void ConfigureServices() {
+            IocManager.RegisterAssemblyByConvention(typeof(MyLangModule).GetAssembly());
             Configuration.Localization.Sources.Add(
                 new DictionaryBasedLocalizationSource(
                     "Lang",
                     new XmlEmbeddedFileLocalizationDictionaryProvider(
                         typeof(MyLangModule).GetAssembly(),
-                         "Abp.Tests.Localization.Json.XmlSources"
-                        )
+                        "Abp.Tests.Localization.Json.XmlSources"
                     )
-                );
+                )
+            );
 
             Configuration.Localization.Sources.Extensions.Add(
                 new LocalizationSourceExtensionInfo(
                     "Lang",
                     new JsonEmbeddedFileLocalizationDictionaryProvider(
                         typeof(MyLangModule).GetAssembly(),
-                         "Abp.Tests.Localization.Json.JsonSources"
-                        )));
-
-            
+                        "Abp.Tests.Localization.Json.JsonSources"
+                    )));
         }
+
 
         public override void Initialize()
         {
-            IocManager.RegisterAssemblyByConvention(typeof(MyLangModule).GetAssembly());
         }
     }
 }

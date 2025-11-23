@@ -1,49 +1,43 @@
 using System.Linq;
+using Microsoft.Extensions.Logging;
 using Abp.Collections.Extensions;
 using Abp.Configuration.Startup;
 using Abp.Dependency;
 using Abp.MultiTenancy;
-using Castle.Core.Logging;
+using Abp.Logging;
 using Microsoft.AspNetCore.Http;
 
 namespace Abp.AspNetCore.MultiTenancy;
 
-public class HttpHeaderTenantResolveContributor : ITenantResolveContributor, ITransientDependency
-{
-    public ILogger Logger { get; set; }
-
+public class HttpHeaderTenantResolveContributor : ITenantResolveContributor, ITransientDependency {
     private readonly IHttpContextAccessor _httpContextAccessor;
     private readonly IMultiTenancyConfig _multiTenancyConfig;
+    private readonly ILogger<HttpHeaderTenantResolveContributor> _logger;
 
     public HttpHeaderTenantResolveContributor(
         IHttpContextAccessor httpContextAccessor,
-        IMultiTenancyConfig multiTenancyConfig)
-    {
+        IMultiTenancyConfig multiTenancyConfig,
+        ILogger<HttpHeaderTenantResolveContributor> logger) {
         _httpContextAccessor = httpContextAccessor;
         _multiTenancyConfig = multiTenancyConfig;
-
-        Logger = NullLogger.Instance;
+        _logger = logger;
     }
 
-    public int? ResolveTenantId()
-    {
+    public int? ResolveTenantId() {
         var httpContext = _httpContextAccessor.HttpContext;
-        if (httpContext == null)
-        {
+        if (httpContext == null) {
             return null;
         }
 
         var tenantIdHeader = httpContext.Request.Headers[_multiTenancyConfig.TenantIdResolveKey];
-        if (tenantIdHeader == string.Empty || tenantIdHeader.Count < 1)
-        {
+        if (tenantIdHeader == string.Empty || tenantIdHeader.Count < 1) {
             return null;
         }
 
-        if (tenantIdHeader.Count > 1)
-        {
-            Logger.Warn(
+        if (tenantIdHeader.Count > 1) {
+            _logger.LogWarning(
                 $"HTTP request includes more than one {_multiTenancyConfig.TenantIdResolveKey} header value. First one will be used. All of them: {tenantIdHeader.JoinAsString(", ")}"
-                );
+            );
         }
 
         return int.TryParse(tenantIdHeader.First(), out var tenantId) ? tenantId : (int?)null;

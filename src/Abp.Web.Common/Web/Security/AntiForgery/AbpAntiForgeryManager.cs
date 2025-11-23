@@ -1,28 +1,19 @@
-﻿using System;
+using System;
+using Microsoft.Extensions.Logging;
 using Abp.Dependency;
-using Castle.Core.Logging;
+using Abp.Logging;
 
-namespace Abp.Web.Security.AntiForgery
-{
-    public class AbpAntiForgeryManager : IAbpAntiForgeryManager, IAbpAntiForgeryValidator, ITransientDependency
-    {
-        public ILogger Logger { protected get; set; }
+namespace Abp.Web.Security.AntiForgery {
+    public class AbpAntiForgeryManager(IAbpAntiForgeryConfiguration configuration, ILogger<AbpAntiForgeryManager> logger)
+        : IAbpAntiForgeryManager, IAbpAntiForgeryValidator, ITransientDependency {
+        public ILogger Logger { protected get; set; } = logger;
+        public IAbpAntiForgeryConfiguration Configuration { get; } = configuration;
 
-        public IAbpAntiForgeryConfiguration Configuration { get; }
-
-        public AbpAntiForgeryManager(IAbpAntiForgeryConfiguration configuration)
-        {
-            Configuration = configuration;
-            Logger = NullLogger.Instance;
-        }
-
-        public virtual string GenerateToken()
-        {
+        public virtual string GenerateToken() {
             return Guid.NewGuid().ToString("D");
         }
 
-        public virtual bool IsValid(string cookieValue, string tokenValue)
-        {
+        public virtual bool IsValid(string cookieValue, string tokenValue) {
             return cookieValue == tokenValue;
         }
     }

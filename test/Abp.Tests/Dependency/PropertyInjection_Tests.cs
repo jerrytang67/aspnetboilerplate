@@ -1,11 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using Abp.Application.Services;
+using Abp.Dependency;
 using Abp.Runtime.Session;
-using Castle.MicroKernel.Registration;
+using Autofac;
 using NSubstitute;
 using Shouldly;
 using Xunit;
@@ -22,9 +18,10 @@ namespace Abp.Tests.Dependency
             session.UserId.Returns(42);
 
             LocalIocManager.Register<MyApplicationService>();
-            LocalIocManager.IocContainer.Register(
-                Component.For<IAbpSession>().Instance(session)
-                );
+
+            var iocMgr = (IocManager)LocalIocManager;
+            iocMgr.Builder.RegisterInstance(session).As<IAbpSession>();
+            iocMgr.BuildContainer();
 
             var myAppService = LocalIocManager.Resolve<MyApplicationService>();
             myAppService.TestSession();

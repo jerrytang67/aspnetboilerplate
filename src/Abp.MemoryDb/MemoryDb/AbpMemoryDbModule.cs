@@ -10,14 +10,15 @@ namespace Abp.MemoryDb
     /// </summary>
     public class AbpMemoryDbModule : AbpModule
     {
-        public override void PreInitialize()
-        {
+        public override void ConfigureServices() {
             IocManager.Register<IAbpMemoryDbModuleConfiguration, AbpMemoryDbModuleConfiguration>();
+
+            IocManager.RegisterAssemblyByConvention(typeof(AbpMemoryDbModule).GetAssembly());
         }
+
 
         public override void Initialize()
         {
-            IocManager.RegisterAssemblyByConvention(typeof(AbpMemoryDbModule).GetAssembly());
         }
     }
 }

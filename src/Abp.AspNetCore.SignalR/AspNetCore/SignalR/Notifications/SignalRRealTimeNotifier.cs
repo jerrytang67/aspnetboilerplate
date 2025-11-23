@@ -1,10 +1,11 @@
 using System;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 using Abp.AspNetCore.SignalR.Hubs;
 using Abp.Dependency;
 using Abp.Notifications;
 using Abp.RealTime;
-using Castle.Core.Logging;
+using Abp.Logging;
 using Microsoft.AspNetCore.SignalR;
 
 namespace Abp.AspNetCore.SignalR.Notifications;
@@ -12,8 +13,7 @@ namespace Abp.AspNetCore.SignalR.Notifications;
 /// <summary>
 /// Implements <see cref="IRealTimeNotifier"/> to send notifications via SignalR.
 /// </summary>
-public class SignalRRealTimeNotifier : IRealTimeNotifier, ITransientDependency
-{
+public class SignalRRealTimeNotifier : IRealTimeNotifier, ITransientDependency {
     public bool UseOnlyIfRequestedAsTarget => false;
 
     /// <summary>
@@ -30,37 +30,32 @@ public class SignalRRealTimeNotifier : IRealTimeNotifier, ITransientDependency
     /// </summary>
     public SignalRRealTimeNotifier(
         IOnlineClientManager onlineClientManager,
-        IHubContext<AbpCommonHub> hubContext)
-    {
+        IHubContext<AbpCommonHub> hubContext,
+        ILogger<SignalRRealTimeNotifier> logger
+    ) {
         _onlineClientManager = onlineClientManager;
         _hubContext = hubContext;
-        Logger = NullLogger.Instance;
+        Logger = logger;
     }
 
     /// <inheritdoc/>
-    public async Task SendNotificationsAsync(UserNotification[] userNotifications)
-    {
-        foreach (var userNotification in userNotifications)
-        {
-            try
-            {
+    public async Task SendNotificationsAsync(UserNotification[] userNotifications) {
+        foreach (var userNotification in userNotifications) {
+            try {
                 var onlineClients = await _onlineClientManager.GetAllByUserIdAsync(userNotification);
-                foreach (var onlineClient in onlineClients)
-                {
+                foreach (var onlineClient in onlineClients) {
                     var signalRClient = _hubContext.Clients.Client(onlineClient.ConnectionId);
-                    if (signalRClient == null)
-                    {
-                        Logger.Debug("Can not get user " + userNotification.ToUserIdentifier() + " with connectionId " + onlineClient.ConnectionId + " from SignalR hub!");
+                    if (signalRClient == null) {
+                        Logger.LogDebug("Can not get user " + userNotification.ToUserIdentifier() + " with connectionId " + onlineClient.ConnectionId + " from SignalR hub!");
                         continue;
                     }
-                    
+
                     await signalRClient.SendAsync("getNotification", userNotification);
                 }
             }
-            catch (Exception ex)
-            {
-                Logger.Warn("Could not send notification to user: " + userNotification.ToUserIdentifier());
-                Logger.Warn(ex.ToString(), ex);
+            catch (Exception ex) {
+                Logger.LogWarning("Could not send notification to user: " + userNotification.ToUserIdentifier());
+                Logger.LogWarning(ex.ToString(), ex);
             }
         }
     }

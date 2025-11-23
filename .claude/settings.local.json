@@ -1,0 +1,41 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(echo:*)",
+      "WebSearch",
+      "Bash(dotnet build:*)",
+      "Bash(for file in \"E:\\code\\Github\\aspnetboilerplate\\test\\Abp.Tests\\Application\\Navigation\\NavigationTestCase.cs\" \"E:\\code\\Github\\aspnetboilerplate\\test\\Abp.Tests\\Authorization\\AuthorizationInterceptor_Tests.cs\" \"E:\\code\\Github\\aspnetboilerplate\\test\\Abp.Tests\\Authorization\\PermissionDefinitionTests.cs\" \"E:\\code\\Github\\aspnetboilerplate\\test\\Abp.Tests\\Configuration\\SettingManager_Tests.cs\")",
+      "Bash(do sed -i '/using Castle.MicroKernel/d' \"$file\")",
+      "Bash(done)",
+      "Bash(for file in \"E:\\code\\Github\\aspnetboilerplate\\test\\Abp.Tests\\Dependency\\Circular_Constructor_Dependency_Tests.cs\" \"E:\\code\\Github\\aspnetboilerplate\\test\\Abp.Tests\\Dependency\\GenericInjection_Tests.cs\" \"E:\\code\\Github\\aspnetboilerplate\\test\\Abp.Tests\\Dependency\\Interceptors\\Interceptors_Can_Have_Injected_Objects.cs\" \"E:\\code\\Github\\aspnetboilerplate\\test\\Abp.Tests\\Dependency\\IocManager_LifeStyle_Tests.cs\" \"E:\\code\\Github\\aspnetboilerplate\\test\\Abp.Tests\\Dependency\\IocManager_Override_Tests.cs\" \"E:\\code\\Github\\aspnetboilerplate\\test\\Abp.Tests\\Dependency\\PropertyInjection_Tests.cs\" \"E:\\code\\Github\\aspnetboilerplate\\test\\Abp.Tests\\Domain\\Uow\\UnitOfWorkManager_Tests.cs\" \"E:\\code\\Github\\aspnetboilerplate\\test\\Abp.Tests\\Runtime\\Caching\\Memory\\MemoryCacheManager_Tests.cs\")",
+      "Bash(for proj in \"src/Abp/Abp.csproj\" \"src/Abp.AspNetCore/Abp.AspNetCore.csproj\" \"src/Abp.FluentValidation/Abp.FluentValidation.csproj\" \"src/Abp.EntityFramework.Common/Abp.EntityFramework.Common.csproj\" \"src/Abp.AutoMapper/Abp.AutoMapper.csproj\" \"src/Abp.Zero.Common/Abp.Zero.Common.csproj\")",
+      "Bash(do echo \"✓ $proj\")",
+      "Bash(if [ -f \"E:\\code\\Github\\aspnetboilerplate\\src\\Abp\\Dependency\\AutofacInterceptionHelper.cs\" ])",
+      "Bash(then rm \"E:\\code\\Github\\aspnetboilerplate\\src\\Abp\\Dependency\\AutofacInterceptionHelper.cs\")",
+      "Bash(fi)",
+      "Bash(if [ -f \"E:\\code\\Github\\aspnetboilerplate\\src\\Abp\\Dependency\\InterceptorRegistrationManager.cs\" ])",
+      "Bash(then rm \"E:\\code\\Github\\aspnetboilerplate\\src\\Abp\\Dependency\\InterceptorRegistrationManager.cs\")",
+      "Bash(dotnet run)",
+      "Bash(dotnet run:*)",
+      "WebFetch(domain:github.com)",
+      "Bash(Select-String -Pattern \"(error|warning|成功|已用)\" -Context 0,0)",
+      "Bash(timeout 10 dotnet run:*)",
+      "Bash(timeout 15 dotnet run:*)",
+      "Bash(Select-String -Pattern \"(crit:|error|Cannot resolve|Now listening|Application started)\" -Context 0,2)",
+      "Bash(curl:*)",
+      "Bash(taskkill:*)",
+      "Bash($null)",
+      "Bash(powershell:*)",
+      "Bash(find:*)",
+      "Bash(Select-String -Pattern \"(error|warning CS|succeeded|failed)\")",
+      "Bash(dotnet test:*)",
+      "Bash(Start-Sleep -Seconds 2)",
+      "Bash(timeout 30 dotnet run:*)",
+      "Bash(Select-String -Pattern \"(Assembly:|Found|Application|crit:|fail:|Now listening)\" -Context 0,2)",
+      "Bash(python -m json.tool:*)",
+      "WebFetch(domain:raw.githubusercontent.com)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

@@ -1,10 +1,10 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using Microsoft.Extensions.Logging;
 using Abp.Configuration.Startup;
 using Abp.Extensions;
 using Abp.Logging;
-using Castle.Core.Logging;
 
 namespace Abp.Localization
 {
@@ -26,7 +26,7 @@ namespace Abp.Localization
 
             if (configuration.LogWarnMessageIfNotFound)
             {
-                (logger ?? LogHelper.Logger).Warn(exceptionMessage);
+                (logger ?? LogHelper.Logger).LogWarning(exceptionMessage);
             }
 
             var notFoundText = configuration.HumanizeTextIfNotFound
@@ -54,7 +54,7 @@ namespace Abp.Localization
 
             if (configuration.LogWarnMessageIfNotFound)
             {
-                (logger ?? LogHelper.Logger).Warn(exceptionMessage);
+                (logger ?? LogHelper.Logger).LogWarning(exceptionMessage);
             }
 
             var notFoundText = configuration.HumanizeTextIfNotFound

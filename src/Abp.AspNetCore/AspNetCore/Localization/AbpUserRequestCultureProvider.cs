@@ -7,27 +7,18 @@ using Abp.Configuration;
 using Abp.Extensions;
 using Abp.Localization;
 using Abp.Runtime.Session;
-using Castle.Core.Logging;
 using JetBrains.Annotations;
+using Microsoft.Extensions.Logging;
 
 namespace Abp.AspNetCore.Localization;
 
-public class AbpUserRequestCultureProvider : RequestCultureProvider
-{
+public class AbpUserRequestCultureProvider(ILogger logger) : RequestCultureProvider {
     public CookieRequestCultureProvider CookieProvider { get; set; }
     public AbpLocalizationHeaderRequestCultureProvider HeaderProvider { get; set; }
-    public ILogger Logger { get; set; }
 
-    public AbpUserRequestCultureProvider()
-    {
-        Logger = NullLogger.Instance;
-    }
-
-    public override async Task<ProviderCultureResult> DetermineProviderCultureResult(HttpContext httpContext)
-    {
+    public override async Task<ProviderCultureResult> DetermineProviderCultureResult(HttpContext httpContext) {
         var abpSession = httpContext.RequestServices.GetRequiredService<IAbpSession>();
-        if (abpSession.UserId == null)
-        {
+        if (abpSession.UserId == null) {
             return null;
         }
 
@@ -40,51 +31,45 @@ public class AbpUserRequestCultureProvider : RequestCultureProvider
             fallbackToDefault: false
         );
 
-        if (!userCulture.IsNullOrEmpty())
-        {
-            Logger.DebugFormat("{0} - Read from user settings", nameof(AbpUserRequestCultureProvider));
-            Logger.DebugFormat("Using Culture:{0} , UICulture:{1}", userCulture, userCulture);
+        if (!userCulture.IsNullOrEmpty()) {
+            logger.LogDebug("{0} - Read from user settings", nameof(AbpUserRequestCultureProvider));
+            logger.LogDebug("Using Culture:{0} , UICulture:{1}", userCulture, userCulture);
             return new ProviderCultureResult(userCulture, userCulture);
         }
 
         ProviderCultureResult result = null;
         string cultureName = null;
         var cookieResult = await GetResultOrNull(httpContext, CookieProvider);
-        if (cookieResult != null && cookieResult.Cultures.Any())
-        {
+        if (cookieResult != null && cookieResult.Cultures.Any()) {
             var cookieCulture = cookieResult.Cultures.First().Value;
             var cookieUICulture = cookieResult.UICultures.First().Value;
 
-            Logger.DebugFormat("{0} - Read from cookie", nameof(AbpUserRequestCultureProvider));
-            Logger.DebugFormat("Using Culture:{0} , UICulture:{1}", cookieCulture, cookieUICulture);
+            logger.LogDebug("{0} - Read from cookie", nameof(AbpUserRequestCultureProvider));
+            logger.LogDebug("Using Culture:{0} , UICulture:{1}", cookieCulture, cookieUICulture);
 
             result = cookieResult;
             cultureName = cookieCulture ?? cookieUICulture;
         }
 
-        if (result == null || !result.Cultures.Any())
-        {
+        if (result == null || !result.Cultures.Any()) {
             var headerResult = await GetResultOrNull(httpContext, HeaderProvider);
-            if (headerResult != null && headerResult.Cultures.Any())
-            {
+            if (headerResult != null && headerResult.Cultures.Any()) {
                 var headerCulture = headerResult.Cultures.First().Value;
                 var headerUICulture = headerResult.UICultures.First().Value;
 
-                Logger.DebugFormat("{0} - Read from header", nameof(AbpUserRequestCultureProvider));
-                Logger.DebugFormat("Using Culture:{0} , UICulture:{1}", headerCulture, headerUICulture);
+                logger.LogDebug("{0} - Read from header", nameof(AbpUserRequestCultureProvider));
+                logger.LogDebug("Using Culture:{0} , UICulture:{1}", headerCulture, headerUICulture);
 
                 result = headerResult;
                 cultureName = headerCulture ?? headerUICulture;
             }
         }
 
-        if (cultureName.IsNullOrEmpty() || cultureName == await GetDefaultCulture(abpSession, settingManager))
-        {
+        if (cultureName.IsNullOrEmpty() || cultureName == await GetDefaultCulture(abpSession, settingManager)) {
             return result;
         }
 
-        if (GlobalizationHelper.IsValidCultureCode(cultureName))
-        {
+        if (GlobalizationHelper.IsValidCultureCode(cultureName)) {
             // Try to set user's language setting from cookie/header if available and not default.
             await settingManager.ChangeSettingForUserAsync(
                 abpSession.ToUserIdentifier(),
@@ -96,18 +81,15 @@ public class AbpUserRequestCultureProvider : RequestCultureProvider
         return result;
     }
 
-    protected virtual async Task<ProviderCultureResult> GetResultOrNull([NotNull] HttpContext httpContext, [CanBeNull] IRequestCultureProvider provider)
-    {
-        if (provider == null)
-        {
+    protected virtual async Task<ProviderCultureResult> GetResultOrNull([NotNull] HttpContext httpContext, [CanBeNull] IRequestCultureProvider provider) {
+        if (provider == null) {
             return null;
         }
 
         return await provider.DetermineProviderCultureResult(httpContext);
     }
 
-    private Task<string> GetDefaultCulture(IAbpSession abpSession, ISettingManager settingManager)
-    {
+    private Task<string> GetDefaultCulture(IAbpSession abpSession, ISettingManager settingManager) {
         return abpSession.TenantId.HasValue
             ? settingManager.GetSettingValueForTenantAsync(LocalizationSettingNames.DefaultLanguage, abpSession.TenantId.Value)
             : settingManager.GetSettingValueForApplicationAsync(LocalizationSettingNames.DefaultLanguage);

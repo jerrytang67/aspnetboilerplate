@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
+using Abp.Dependency;
 using Abp.Runtime.Caching.Redis;
 using Abp.Tests;
 using Shouldly;
@@ -14,6 +15,10 @@ namespace Abp.RedisCache.Tests
         public DefaultRedisCacheSerializer_Tests()
         {
             LocalIocManager.Register<IRedisCacheSerializer, DefaultRedisCacheSerializer>();
+            
+            var iocMgr = (IocManager)LocalIocManager;
+            iocMgr.BuildContainer();
+            
             _redisCacheSerializer = LocalIocManager.Resolve<IRedisCacheSerializer>();
         }
 

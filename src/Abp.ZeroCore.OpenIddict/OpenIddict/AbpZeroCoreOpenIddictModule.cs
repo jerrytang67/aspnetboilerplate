@@ -7,8 +7,12 @@ namespace Abp.OpenIddict;
 [DependsOn(typeof(AbpZeroCoreModule))]
 public class AbpZeroCoreOpenIddictModule : AbpModule
 {
+    public override void ConfigureServices() {
+        IocManager.RegisterAssemblyByConvention(typeof(AbpZeroCoreOpenIddictModule).GetAssembly());
+
+    }
+
     public override void Initialize()
     {
-        IocManager.RegisterAssemblyByConvention(typeof(AbpZeroCoreOpenIddictModule).GetAssembly());
     }
 }

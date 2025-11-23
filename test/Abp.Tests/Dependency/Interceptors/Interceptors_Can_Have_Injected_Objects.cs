@@ -1,5 +1,7 @@
-﻿using Castle.DynamicProxy;
-using Castle.MicroKernel.Registration;
+using Abp.Dependency;
+using Autofac;
+using Autofac.Extras.DynamicProxy;
+using Castle.DynamicProxy;
 using Shouldly;
 using Xunit;
 
@@ -10,10 +12,13 @@ namespace Abp.Tests.Dependency.Interceptors
         [Fact]
         public void Interceptors_Should_Work()
         {
-            LocalIocManager.IocContainer.Register(
-                Component.For<BracketInterceptor>().LifestyleTransient(),
-                Component.For<MyGreetingClass>().Interceptors<BracketInterceptor>().LifestyleTransient()
-                );
+            var iocMgr = (IocManager)LocalIocManager;
+            iocMgr.Builder.RegisterType<BracketInterceptor>().InstancePerDependency();
+            iocMgr.Builder.RegisterType<MyGreetingClass>()
+                .EnableClassInterceptors()
+                .InterceptedBy(typeof(BracketInterceptor))
+                .InstancePerDependency();
+            iocMgr.BuildContainer();
 
             var greetingObj = LocalIocManager.Resolve<MyGreetingClass>();
 

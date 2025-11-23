@@ -1,9 +1,10 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using Abp.Dependency;
 using Abp.Notifications;
 using Abp.Runtime.Session;
-using Castle.MicroKernel.Registration;
+using Autofac;
 using Shouldly;
 using Xunit;
 
@@ -17,12 +18,13 @@ public class NotificationStore_Tests : AbpZeroTestBase
     public NotificationStore_Tests()
     {
         var defaultNotificationDistributor = LocalIocManager.Resolve<DefaultNotificationDistributer>();
-        LocalIocManager.IocContainer.Register(
-            Component.For<INotificationDistributer>().Instance(defaultNotificationDistributor)
-                .LifestyleSingleton()
-                .IsDefault()
-                .Named("DefaultNotificationDistributer")
-        );
+        
+        // Register using Autofac
+        var iocMgr = (IocManager)LocalIocManager;
+        iocMgr.Builder.RegisterInstance(defaultNotificationDistributor)
+            .As<INotificationDistributer>()
+            .SingleInstance()
+            .Named<INotificationDistributer>("DefaultNotificationDistributer");
 
         _notificationPublisher = LocalIocManager.Resolve<INotificationPublisher>();
         _notificationStore = LocalIocManager.Resolve<INotificationStore>();

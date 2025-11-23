@@ -38,6 +38,8 @@
 		<PackageReference Include="Shouldly" Version="4.3.0" />
 		<PackageReference Include="xunit" Version="2.9.3" />
 		<PackageReference Include="TimeZoneConverter" Version="7.0.0" />
+		<PackageReference Include="FsCheck" Version="2.16.6" />
+		<PackageReference Include="FsCheck.Xunit" Version="2.16.6" />
 	</ItemGroup>
 	<ItemGroup>
 		<Service Include="{82a7f48d-3b50-4b1e-b82e-3ada8210c358}" />

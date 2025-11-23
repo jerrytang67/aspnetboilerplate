@@ -3,11 +3,12 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Globalization;
 using System.Linq;
+using Microsoft.Extensions.Logging;
 using Abp.Collections.Extensions;
 using Abp.Configuration.Startup;
 using Abp.Dependency;
 using Abp.Extensions;
-using Castle.Core.Logging;
+using Abp.Logging;
 
 namespace Abp.Localization.Dictionaries
 {
@@ -48,7 +49,7 @@ namespace Abp.Localization.Dictionaries
             LocalizationConfiguration = configuration;
 
             _logger = iocResolver.IsRegistered(typeof(ILoggerFactory))
-                ? iocResolver.Resolve<ILoggerFactory>().Create(typeof(DictionaryBasedLocalizationSource))
+                ? iocResolver.Resolve<ILoggerFactory>().CreateLogger(typeof(DictionaryBasedLocalizationSource))
                 : NullLogger.Instance;
 
             DictionaryProvider.Initialize(Name);

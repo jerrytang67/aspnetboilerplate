@@ -207,7 +207,7 @@ public class NhEntityHistoryHelper : EntityHistoryHelperBase, IEntityHistoryHelp
 
         if (entityId == null)
         {
-            Logger.ErrorFormat("EntityChangeType {0} must have non-empty entity id", changeType);
+            Logger.LogError("EntityChangeType {0} must have non-empty entity id", changeType);
             return null;
         }
 

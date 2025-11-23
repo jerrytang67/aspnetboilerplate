@@ -136,10 +136,68 @@ namespace Abp.Configuration.Startup
         public AbpStartupConfiguration(IIocManager iocManager)
         {
             IocManager = iocManager;
+            CustomConfigProviders = new List<ICustomConfigProvider>();
+            ServiceReplaceActions = new Dictionary<Type, Action>();
+        }
+
+        /// <summary>
+        /// Early initialization that creates configuration objects without resolving from container.
+        /// This is called before the container is built to allow modules to access Configuration during ConfigureServices.
+        /// </summary>
+        public void EarlyInitialize()
+        {
+            // Create instances directly since container isn't built yet
+            // These will be registered in the container by AbpCoreModule
+            // Note: Some of these require 'this' as parameter since they need reference to AbpConfiguration
+            Localization = new LocalizationConfiguration();
+            Modules = new ModuleConfigurations(this);
+            Features = new FeatureConfiguration();
+            Navigation = new NavigationConfiguration();
+            Authorization = new AuthorizationConfiguration();
+            Validation = new ValidationConfiguration();
+            Settings = new SettingsConfiguration();
+            UnitOfWork = new UnitOfWorkDefaultOptions();
+            EventBus = new EventBusConfiguration();
+            MultiTenancy = new MultiTenancyConfig();
+            Auditing = new AuditingConfiguration();
+            Caching = new CachingConfiguration(this);
+            BackgroundJobs = new BackgroundJobConfiguration(this);
+            Notifications = new NotificationConfiguration();
+            EmbeddedResources = new EmbeddedResourcesConfiguration();
+            EntityHistory = new EntityHistoryConfiguration();
+            Webhooks = new WebhooksConfiguration();
+            DynamicEntityProperties = new DynamicEntityPropertyConfiguration();
+            
+            // Store configuration objects in the dictionary so Get<T>() can find them
+            // without needing to resolve from the container
+            this[typeof(ILocalizationConfiguration).FullName] = Localization;
+            this[typeof(IModuleConfigurations).FullName] = Modules;
+            this[typeof(IFeatureConfiguration).FullName] = Features;
+            this[typeof(INavigationConfiguration).FullName] = Navigation;
+            this[typeof(IAuthorizationConfiguration).FullName] = Authorization;
+            this[typeof(IValidationConfiguration).FullName] = Validation;
+            this[typeof(ISettingsConfiguration).FullName] = Settings;
+            this[typeof(IUnitOfWorkDefaultOptions).FullName] = UnitOfWork;
+            this[typeof(IEventBusConfiguration).FullName] = EventBus;
+            this[typeof(IMultiTenancyConfig).FullName] = MultiTenancy;
+            this[typeof(IAuditingConfiguration).FullName] = Auditing;
+            this[typeof(ICachingConfiguration).FullName] = Caching;
+            this[typeof(IBackgroundJobConfiguration).FullName] = BackgroundJobs;
+            this[typeof(INotificationConfiguration).FullName] = Notifications;
+            this[typeof(IEmbeddedResourcesConfiguration).FullName] = EmbeddedResources;
+            this[typeof(IEntityHistoryConfiguration).FullName] = EntityHistory;
+            this[typeof(IWebhooksConfiguration).FullName] = Webhooks;
+            this[typeof(IDynamicEntityPropertyConfiguration).FullName] = DynamicEntityProperties;
         }
 
         public void Initialize()
         {
+            // If already initialized early, just return
+            if (Modules != null)
+            {
+                return;
+            }
+
             Localization = IocManager.Resolve<ILocalizationConfiguration>();
             Modules = IocManager.Resolve<IModuleConfigurations>();
             Features = IocManager.Resolve<IFeatureConfiguration>();
@@ -158,9 +216,6 @@ namespace Abp.Configuration.Startup
             EntityHistory = IocManager.Resolve<IEntityHistoryConfiguration>();
             Webhooks = IocManager.Resolve<IWebhooksConfiguration>();
             DynamicEntityProperties = IocManager.Resolve<IDynamicEntityPropertyConfiguration>();
-
-            CustomConfigProviders = new List<ICustomConfigProvider>();
-            ServiceReplaceActions = new Dictionary<Type, Action>();
         }
 
         public void ReplaceService(Type type, Action replaceAction)

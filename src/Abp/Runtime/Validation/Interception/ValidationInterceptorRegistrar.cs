@@ -1,6 +1,6 @@
-﻿using System.Reflection;
+﻿using System;
+using System.Reflection;
 using Abp.Dependency;
-using Castle.Core;
 
 namespace Abp.Runtime.Validation.Interception
 {
@@ -8,22 +8,9 @@ namespace Abp.Runtime.Validation.Interception
     {
         public static void Initialize(IIocManager iocManager)
         {
-            iocManager.IocContainer.Kernel.ComponentRegistered += (key, handler) =>
-            {
-                var implementationType = handler.ComponentModel.Implementation.GetTypeInfo();
-            
-                if (!iocManager.IsRegistered<IAbpValidationDefaultOptions>())
-                {
-                    return;
-                }
-                
-                var validationOptions = iocManager.Resolve<IAbpValidationDefaultOptions>();
-
-                if (validationOptions.IsConventionalValidationClass(implementationType.AsType()))
-                {
-                    handler.ComponentModel.Interceptors.Add(new InterceptorReference(typeof(AbpAsyncDeterminationInterceptor<ValidationInterceptor>)));
-                }
-            };
+            // Note: Interceptors are now automatically applied via BasicConventionalRegistrar
+            // using Autofac.Extras.DynamicProxy's EnableInterfaceInterceptors
+            // This method is kept for backwards compatibility but does nothing
         }
     }
 }

@@ -42,15 +42,15 @@ namespace Abp.Tests.Localization
 
     public class DefaultLanguageProviderLangModule : AbpModule
     {
-        public override void PreInitialize()
-        {
-            Configuration.Localization.Languages.Add(new LanguageInfo("en", "English", isDefault: true));
-            Configuration.Localization.Languages.Add(new LanguageInfo("tr", "Türkçe", isDisabled: true));
+        public override void ConfigureServices() {
+
+            IocManager.RegisterAssemblyByConvention(typeof(DefaultLanguageProviderLangModule).GetAssembly());
         }
 
         public override void Initialize()
         {
-            IocManager.RegisterAssemblyByConvention(typeof(DefaultLanguageProviderLangModule).GetAssembly());
+            Configuration.Localization.Languages.Add(new LanguageInfo("en", "English", isDefault: true));
+            Configuration.Localization.Languages.Add(new LanguageInfo("tr", "Türkçe", isDisabled: true));
         }
     }
 }

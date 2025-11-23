@@ -1,20 +1,19 @@
 using System;
 using System.Globalization;
+using Microsoft.Extensions.Logging;
 using Abp.Configuration;
 using Abp.Dependency;
 using Abp.Localization;
 using Abp.Localization.Sources;
 using Abp.ObjectMapping;
 using Abp.Runtime.Session;
-using Castle.Core.Logging;
+using Abp.Logging;
 using Microsoft.AspNetCore.SignalR;
 
 namespace Abp.AspNetCore.SignalR.Hubs;
 
 public abstract class AbpHubBase : Hub
 {
-    public ILogger Logger { get; set; }
-
     [Obsolete("Use Context.User instead.")]
     public IAbpSession AbpSession { get; set; }
 
@@ -59,7 +58,6 @@ public abstract class AbpHubBase : Hub
 
     protected AbpHubBase()
     {
-        Logger = NullLogger.Instance;
         ObjectMapper = NullObjectMapper.Instance;
         LocalizationManager = NullLocalizationManager.Instance;
     }

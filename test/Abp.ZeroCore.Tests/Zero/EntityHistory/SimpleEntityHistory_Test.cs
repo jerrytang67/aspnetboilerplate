@@ -1,3 +1,4 @@
+using Abp.Dependency;
 using Abp.Domain.Entities;
 using Abp.Domain.Entities.Auditing;
 using Abp.Domain.Repositories;
@@ -8,7 +9,7 @@ using Abp.Extensions;
 using Abp.Json;
 using Abp.Timing;
 using Abp.ZeroCore.SampleApp.Core.EntityHistory;
-using Castle.MicroKernel.Registration;
+using Autofac;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using NSubstitute;
 using Shouldly;
@@ -52,9 +53,10 @@ public class SimpleEntityHistory_Test : AbpZeroTestBase
     {
         base.PreInitialize();
         _entityHistoryStore = Substitute.For<IEntityHistoryStore>();
-        LocalIocManager.IocContainer.Register(
-            Component.For<IEntityHistoryStore>().Instance(_entityHistoryStore).LifestyleSingleton()
-        );
+        var iocMgr = (IocManager)LocalIocManager;
+        iocMgr.Builder.RegisterInstance(_entityHistoryStore)
+            .As<IEntityHistoryStore>()
+            .SingleInstance();
     }
 
     #region CASES WRITE HISTORY

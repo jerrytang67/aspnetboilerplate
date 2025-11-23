@@ -1,8 +1,7 @@
 using System.Net.Http;
 using System.Threading.Tasks;
 using Abp.Auditing;
-using Abp.Dependency;
-using Castle.MicroKernel.Registration;
+using Autofac;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Xunit;
 using NSubstitute;
@@ -13,27 +12,21 @@ namespace AbpAspNetCoreDemo.IntegrationTests.Tests;
 
 public class RazorAuditPageFilterTests
 {
-    private readonly WebApplicationFactory<Startup> _factory;
+    private readonly CustomWebApplicationFactory<Startup> _factory;
 
     private IAuditingStore _auditingStore;
 
     public RazorAuditPageFilterTests()
     {
-        _factory = new WebApplicationFactory<Startup>();
-
-        RegisterFakeAuditingStore();
-    }
-
-    private void RegisterFakeAuditingStore()
-    {
-        Startup.IocManager.Value = new IocManager();
-
         _auditingStore = Substitute.For<IAuditingStore>();
-        Startup.IocManager.Value.IocContainer.Register(
-            Component.For<IAuditingStore>().Instance(
-                _auditingStore
-            ).IsDefault()
-        );
+
+        _factory = new CustomWebApplicationFactory<Startup>(builder =>
+        {
+            // Override the auditing store with our mock
+            builder.RegisterInstance(_auditingStore)
+                .As<IAuditingStore>()
+                .SingleInstance();
+        });
     }
 
     [Theory]

@@ -14,6 +14,7 @@ using JetBrains.Annotations;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.Extensions.Logging;
 
 namespace Abp.EntityHistory;
 
@@ -207,13 +208,13 @@ public class EntityHistoryHelper : EntityHistoryHelperBase, IEntityHistoryHelper
             case EntityState.Unchanged:
                 return null;
             default:
-                Logger.ErrorFormat("Unexpected {0} - {1}", nameof(entityEntry.State), entityEntry.State);
+                Logger.LogError("Unexpected {0} - {1}", nameof(entityEntry.State), entityEntry.State);
                 return null;
         }
 
         if (entityId == null && changeType != EntityChangeType.Created)
         {
-            Logger.ErrorFormat("EntityChangeType {0} must have non-empty entity id", changeType);
+            Logger.LogError("EntityChangeType {0} must have non-empty entity id", changeType);
             return null;
         }
 

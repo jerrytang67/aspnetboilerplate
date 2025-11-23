@@ -10,15 +10,12 @@ using Xunit;
 
 namespace Abp.Zero.Localization;
 
-public class XmlEmbeddedFileLocalizationDictionaryProvider_Tests : AbpIntegratedTestBase<MyCustomXmlLangModule>
-{
+public class XmlEmbeddedFileLocalizationDictionaryProvider_Tests : AbpIntegratedTestBase<MyCustomXmlLangModule> {
     [Fact]
-    public void Test_Xml_Override()
-    {
+    public void Test_Xml_Override() {
         var mananger = LocalIocManager.Resolve<ILocalizationManager>();
 
-        using (CultureInfoHelper.Use("en"))
-        {
+        using (CultureInfoHelper.Use("en")) {
             var abpSource = mananger.GetSource(AbpConsts.LocalizationSourceName);
             abpSource.GetString("TimeZone").ShouldBe("Time-zone");
 
@@ -28,10 +25,8 @@ public class XmlEmbeddedFileLocalizationDictionaryProvider_Tests : AbpIntegrated
     }
 }
 
-public class MyCustomXmlLangModule : AbpModule
-{
-    public override void PreInitialize()
-    {
+public class MyCustomXmlLangModule : AbpModule {
+    public override void Initialize() {
         Configuration.Localization.Sources.Add(
             new DictionaryBasedLocalizationSource(
                 AbpZeroConsts.LocalizationSourceName,

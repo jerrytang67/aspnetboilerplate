@@ -1,6 +1,7 @@
-﻿using System.Transactions;
+using System.Transactions;
+using Abp.Dependency;
 using Abp.Domain.Uow;
-using Castle.MicroKernel.Registration;
+using Autofac;
 using NSubstitute;
 using Xunit;
 
@@ -13,12 +14,12 @@ namespace Abp.Tests.Domain.Uow
         {
             var fakeUow = Substitute.For<IUnitOfWork>();
 
-            LocalIocManager.IocContainer.Register(
-                Component.For<IUnitOfWorkDefaultOptions>().ImplementedBy<UnitOfWorkDefaultOptions>().LifestyleSingleton(),
-                Component.For<IUnitOfWorkManager>().ImplementedBy<UnitOfWorkManager>().LifestyleSingleton(),
-                Component.For<IUnitOfWork>().Instance(fakeUow).LifestyleSingleton(),
-                Component.For<ICurrentUnitOfWorkProvider>().ImplementedBy<AsyncLocalCurrentUnitOfWorkProvider>().LifestyleSingleton()
-                );
+            var iocMgr = (IocManager)LocalIocManager;
+            iocMgr.Builder.RegisterType<UnitOfWorkDefaultOptions>().As<IUnitOfWorkDefaultOptions>().SingleInstance();
+            iocMgr.Builder.RegisterType<UnitOfWorkManager>().As<IUnitOfWorkManager>().SingleInstance();
+            iocMgr.Builder.RegisterInstance(fakeUow).As<IUnitOfWork>().SingleInstance();
+            iocMgr.Builder.RegisterType<AsyncLocalCurrentUnitOfWorkProvider>().As<ICurrentUnitOfWorkProvider>().SingleInstance();
+            iocMgr.BuildContainer();
 
             var uowManager = LocalIocManager.Resolve<IUnitOfWorkManager>();
 

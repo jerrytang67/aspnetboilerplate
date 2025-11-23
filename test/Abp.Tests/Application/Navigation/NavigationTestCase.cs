@@ -5,7 +5,7 @@ using Abp.Authorization;
 using Abp.Configuration.Startup;
 using Abp.Dependency;
 using Abp.Localization;
-using Castle.MicroKernel.Registration;
+using Autofac;
 using NSubstitute;
 
 namespace Abp.Tests.Application.Navigation
@@ -44,20 +44,16 @@ namespace Abp.Tests.Application.Navigation
             NavigationManager = new NavigationManager(_iocManager, configuration);
             NavigationManager.Initialize();
 
-            _iocManager.IocContainer.Register(
-                Component.For<IPermissionDependencyContext, PermissionDependencyContext>()
-                    .UsingFactoryMethod(
-                        () => new PermissionDependencyContext(_iocManager)
-                        {
-                            PermissionChecker = CreateMockPermissionChecker()
-                        })
-                );
+            var iocMgr = (IocManager)_iocManager;
+            iocMgr.Builder.Register(c => new PermissionDependencyContext(_iocManager)
+            {
+                PermissionChecker = CreateMockPermissionChecker()
+            }).As<IPermissionDependencyContext>().As<PermissionDependencyContext>();
 
-            _iocManager.IocContainer.Register(
-                Component.For<IFeatureDependencyContext, FeatureDependencyContext>()
-                    .UsingFactoryMethod(
-                        () => new FeatureDependencyContext(_iocManager, Substitute.For<IFeatureChecker>()))
-                );
+            iocMgr.Builder.Register(c => new FeatureDependencyContext(_iocManager, Substitute.For<IFeatureChecker>()))
+                .As<IFeatureDependencyContext>().As<FeatureDependencyContext>();
+
+            iocMgr.BuildContainer();
 
             //Create user navigation manager to test
             UserNavigationManager = new UserNavigationManager(NavigationManager, Substitute.For<ILocalizationContext>(), _iocManager);

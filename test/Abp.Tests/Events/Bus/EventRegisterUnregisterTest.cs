@@ -5,20 +5,16 @@ using Abp.Events.Bus;
 using Shouldly;
 using Xunit;
 
-namespace Abp.Tests.Events.Bus
-{
-    public class EventRegisterUnregisterTest
-    {
+namespace Abp.Tests.Events.Bus {
+    public class EventRegisterUnregisterTest {
         IEventBus eventBus;
 
-        public EventRegisterUnregisterTest()
-        {
-            eventBus = new EventBus();
+        public EventRegisterUnregisterTest(IEventBus eventBus) {
+            eventBus = new EventBus(null);
         }
 
         [Fact]
-        public void EventBustTest_UnregisterWhileHandlingEvent_ShouldNotThrow()
-        {
+        public void EventBustTest_UnregisterWhileHandlingEvent_ShouldNotThrow() {
             // Arrange
             Func<MyEvent, Task> eventHandler = async (axel) => await axel.Semaphore.WaitAsync();
             eventBus.AsyncRegister(eventHandler);
@@ -32,9 +28,8 @@ namespace Abp.Tests.Events.Bus
             // Assert
             Should.NotThrow(async () => await triggerTask);
         }
-        
-        class MyEvent : EventData
-        {
+
+        class MyEvent : EventData {
             public SemaphoreSlim Semaphore { get; set; } = new SemaphoreSlim(0);
         }
     }

@@ -1,10 +1,11 @@
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 using Abp.Authorization.Roles;
 using Abp.Authorization.Users;
 using Abp.Dependency;
 using Abp.Domain.Uow;
 using Abp.Runtime.Session;
-using Castle.Core.Logging;
+using Abp.Logging;
 
 namespace Abp.Authorization;
 
@@ -15,8 +16,7 @@ namespace Abp.Authorization;
 /// <typeparam name="TUser"></typeparam>
 public class PermissionChecker<TRole, TUser> : IPermissionChecker, ITransientDependency, IIocManagerAccessor
     where TRole : AbpRole<TUser>, new()
-    where TUser : AbpUser<TUser>
-{
+    where TUser : AbpUser<TUser> {
     private readonly AbpUserManager<TRole, TUser> _userManager;
 
     public IIocManager IocManager { get; set; }
@@ -32,61 +32,48 @@ public class PermissionChecker<TRole, TUser> : IPermissionChecker, ITransientDep
     /// <summary>
     /// Constructor.
     /// </summary>
-    public PermissionChecker(AbpUserManager<TRole, TUser> userManager)
-    {
+    public PermissionChecker(AbpUserManager<TRole, TUser> userManager, IIocManager iocManager) {
         _userManager = userManager;
 
-        Logger = NullLogger.Instance;
-        AbpSession = NullAbpSession.Instance;
+        Logger = iocManager.Resolve<ILoggerFactory>().CreateLogger<PermissionChecker<TRole, TUser>>();
+        AbpSession = iocManager.Resolve<IAbpSession>() ?? NullAbpSession.Instance;
     }
 
-    public virtual async Task<bool> IsGrantedAsync(string permissionName)
-    {
+    public virtual async Task<bool> IsGrantedAsync(string permissionName) {
         return AbpSession.UserId.HasValue && await IsGrantedAsync(AbpSession.UserId.Value, permissionName);
     }
 
-    public virtual bool IsGranted(string permissionName)
-    {
+    public virtual bool IsGranted(string permissionName) {
         return AbpSession.UserId.HasValue && IsGranted(AbpSession.UserId.Value, permissionName);
     }
 
-    public virtual async Task<bool> IsGrantedAsync(long userId, string permissionName)
-    {
+    public virtual async Task<bool> IsGrantedAsync(long userId, string permissionName) {
         return await _userManager.IsGrantedAsync(userId, permissionName);
     }
 
-    public virtual bool IsGranted(long userId, string permissionName)
-    {
+    public virtual bool IsGranted(long userId, string permissionName) {
         return _userManager.IsGranted(userId, permissionName);
     }
 
-    public virtual async Task<bool> IsGrantedAsync(UserIdentifier user, string permissionName)
-    {
-        return await UnitOfWorkManager.WithUnitOfWorkAsync(async () =>
-        {
-            if (CurrentUnitOfWorkProvider?.Current == null)
-            {
+    public virtual async Task<bool> IsGrantedAsync(UserIdentifier user, string permissionName) {
+        return await UnitOfWorkManager.WithUnitOfWorkAsync(async () => {
+            if (CurrentUnitOfWorkProvider?.Current == null) {
                 return await IsGrantedAsync(user.UserId, permissionName);
             }
 
-            using (CurrentUnitOfWorkProvider.Current.SetTenantId(user.TenantId))
-            {
+            using (CurrentUnitOfWorkProvider.Current.SetTenantId(user.TenantId)) {
                 return await IsGrantedAsync(user.UserId, permissionName);
             }
         });
     }
 
-    public virtual bool IsGranted(UserIdentifier user, string permissionName)
-    {
-        return UnitOfWorkManager.WithUnitOfWork(() =>
-        {
-            if (CurrentUnitOfWorkProvider?.Current == null)
-            {
+    public virtual bool IsGranted(UserIdentifier user, string permissionName) {
+        return UnitOfWorkManager.WithUnitOfWork(() => {
+            if (CurrentUnitOfWorkProvider?.Current == null) {
                 return IsGranted(user.UserId, permissionName);
             }
 
-            using (CurrentUnitOfWorkProvider.Current.SetTenantId(user.TenantId))
-            {
+            using (CurrentUnitOfWorkProvider.Current.SetTenantId(user.TenantId)) {
                 return IsGranted(user.UserId, permissionName);
             }
         });

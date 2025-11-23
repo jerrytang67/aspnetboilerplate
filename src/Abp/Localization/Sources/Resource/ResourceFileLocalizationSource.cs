@@ -1,12 +1,14 @@
 using System.Collections.Generic;
 using System.Globalization;
 using System.Resources;
+using Microsoft.Extensions.Logging;
 using Abp.Configuration.Startup;
 using Abp.Dependency;
-using Castle.Core.Logging;
+using Abp.Logging;
 using System.Collections;
 using System.Collections.Immutable;
 using System.Linq;
+using Microsoft.Extensions.Logging;
 
 namespace Abp.Localization.Sources.Resource
 {
@@ -45,7 +47,7 @@ namespace Abp.Localization.Sources.Resource
             _configuration = configuration;
 
             _logger = iocResolver.IsRegistered(typeof(ILoggerFactory))
-                ? iocResolver.Resolve<ILoggerFactory>().Create(typeof(ResourceFileLocalizationSource))
+                ? iocResolver.Resolve<ILoggerFactory>().CreateLogger(typeof(ResourceFileLocalizationSource))
                 : NullLogger.Instance;
         }
 

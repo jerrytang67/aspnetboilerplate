@@ -7,14 +7,18 @@ namespace Abp.Zero.Redis.PerRequestRedisCache;
 [DependsOn(typeof(AbpAspNetCorePerRequestRedisCacheModule))]
 public class AbpPerRequestRedisCacheReplacementModule : AbpModule
 {
-    public override void PreInitialize()
-    {
+    public override void ConfigureServices() {
+        IocManager.RegisterAssemblyByConvention(
+            typeof(AbpPerRequestRedisCacheReplacementModule).GetAssembly());
+
         Configuration.Caching.UseRedis(usePerRequestRedisCache: true);
+
     }
 
     public override void Initialize()
     {
-        IocManager.RegisterAssemblyByConvention(
-            typeof(AbpPerRequestRedisCacheReplacementModule).GetAssembly());
     }
+
+
+
 }

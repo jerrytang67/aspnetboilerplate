@@ -1,9 +1,10 @@
 using System;
 using System.Threading.Tasks;
+using Abp.Dependency;
 using Abp.Notifications;
 using Abp.Runtime.Session;
 using Abp.Timing;
-using Castle.MicroKernel.Registration;
+using Autofac;
 using NSubstitute;
 using Shouldly;
 using Xunit;
@@ -13,40 +14,40 @@ namespace Abp.Zero.Notifications;
 public class RealTimeNotifier_Tests : AbpZeroTestBase
 {
     private readonly INotificationPublisher _publisher;
-    private readonly IRealTimeNotifier _realTimeNotifier1;
-    private readonly IRealTimeNotifier _realTimeNotifier2;
+    private IRealTimeNotifier _realTimeNotifier1;
+    private IRealTimeNotifier _realTimeNotifier2;
 
-    public RealTimeNotifier_Tests()
+    protected override void PreInitialize()
     {
+        base.PreInitialize();
+        
         var defaultNotificationDistributor = LocalIocManager.Resolve<DefaultNotificationDistributer>();
-        LocalIocManager.IocContainer.Register(
-            Component.For<INotificationDistributer>().Instance(defaultNotificationDistributor)
-                .LifestyleSingleton()
-                .IsDefault()
-                .Named("DefaultNotificationDistributer")
-        );
+        var iocMgr = (Abp.Dependency.IocManager)LocalIocManager;
+        iocMgr.Builder.RegisterInstance(defaultNotificationDistributor)
+            .As<INotificationDistributer>()
+            .SingleInstance();
 
-        _publisher = LocalIocManager.Resolve<INotificationPublisher>();
         _realTimeNotifier1 = Substitute.For<IRealTimeNotifier>();
         _realTimeNotifier2 = Substitute.For<IRealTimeNotifier2>();
 
         var realTimeNotifierType1 = _realTimeNotifier1.GetType();
         var realTimeNotifierType2 = _realTimeNotifier2.GetType();
 
-        LocalIocManager.IocContainer.Register(
-            Component.For(realTimeNotifierType1)
-                .Instance(_realTimeNotifier1)
-                .LifestyleSingleton()
-        );
-        LocalIocManager.IocContainer.Register(
-            Component.For(realTimeNotifierType2)
-                .Instance(_realTimeNotifier2)
-                .LifestyleSingleton()
-        );
+        iocMgr.Builder.RegisterInstance(_realTimeNotifier1)
+            .As(realTimeNotifierType1)
+            .SingleInstance();
+        iocMgr.Builder.RegisterInstance(_realTimeNotifier2)
+            .As(realTimeNotifierType2)
+            .SingleInstance();
 
         var notificationConfiguration = LocalIocManager.Resolve<INotificationConfiguration>();
         notificationConfiguration.Notifiers.Add(realTimeNotifierType1);
         notificationConfiguration.Notifiers.Add(realTimeNotifierType2);
+    }
+
+    public RealTimeNotifier_Tests()
+    {
+        _publisher = LocalIocManager.Resolve<INotificationPublisher>();
     }
 
     [Fact]

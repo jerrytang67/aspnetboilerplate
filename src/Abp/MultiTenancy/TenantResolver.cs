@@ -1,15 +1,14 @@
 using System;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 using Abp.Configuration.Startup;
 using Abp.Dependency;
 using Abp.Runtime;
-using Castle.Core.Logging;
+using Abp.Logging;
 
-namespace Abp.MultiTenancy
-{
-    public class TenantResolver : ITenantResolver, ITransientDependency
-    {
+namespace Abp.MultiTenancy {
+    public class TenantResolver : ITenantResolver, ITransientDependency {
         private const string AmbientScopeContextKey = "Abp.MultiTenancy.TenantResolver.Resolving";
 
         public ILogger Logger { get; set; }
@@ -25,35 +24,29 @@ namespace Abp.MultiTenancy
             IIocResolver iocResolver,
             ITenantStore tenantStore,
             ITenantResolverCache cache,
-            IAmbientScopeProvider<bool> ambientScopeProvider)
-        {
+            IAmbientScopeProvider<bool> ambientScopeProvider) {
             _multiTenancy = multiTenancy;
             _iocResolver = iocResolver;
             _tenantStore = tenantStore;
             _cache = cache;
             _ambientScopeProvider = ambientScopeProvider;
 
-            Logger = NullLogger.Instance;
+            Logger = iocResolver.Resolve<ILoggerFactory>().CreateLogger<TenantResolver>();
         }
 
-        public int? ResolveTenantId()
-        {
-            if (!_multiTenancy.Resolvers.Any())
-            {
+        public int? ResolveTenantId() {
+            if (!_multiTenancy.Resolvers.Any()) {
                 return null;
             }
 
-            if (_ambientScopeProvider.GetValue(AmbientScopeContextKey))
-            {
+            if (_ambientScopeProvider.GetValue(AmbientScopeContextKey)) {
                 //Preventing recursive call of ResolveTenantId
                 return null;
             }
 
-            using (_ambientScopeProvider.BeginScope(AmbientScopeContextKey, true))
-            {
+            using (_ambientScopeProvider.BeginScope(AmbientScopeContextKey, true)) {
                 var cacheItem = _cache.Value;
-                if (cacheItem != null)
-                {
+                if (cacheItem != null) {
                     return cacheItem.TenantId;
                 }
 
@@ -63,36 +56,28 @@ namespace Abp.MultiTenancy
             }
         }
 
-        public Task<int?> ResolveTenantIdAsync()
-        {
+        public Task<int?> ResolveTenantIdAsync() {
             return Task.FromResult(ResolveTenantId());
         }
 
-        private int? GetTenantIdFromContributors()
-        {
-            foreach (var resolverType in _multiTenancy.Resolvers)
-            {
-                using (var resolver = _iocResolver.ResolveAsDisposable<ITenantResolveContributor>(resolverType))
-                {
+        private int? GetTenantIdFromContributors() {
+            foreach (var resolverType in _multiTenancy.Resolvers) {
+                using (var resolver = _iocResolver.ResolveAsDisposable<ITenantResolveContributor>(resolverType)) {
                     int? tenantId;
 
-                    try
-                    {
+                    try {
                         tenantId = resolver.Object.ResolveTenantId();
                     }
-                    catch (Exception ex)
-                    {
-                        Logger.Warn(ex.ToString(), ex);
+                    catch (Exception ex) {
+                        Logger.LogWarning(ex.ToString(), ex);
                         continue;
                     }
 
-                    if (tenantId == null)
-                    {
+                    if (tenantId == null) {
                         continue;
                     }
 
-                    if (_tenantStore.Find(tenantId.Value) == null)
-                    {
+                    if (_tenantStore.Find(tenantId.Value) == null) {
                         continue;
                     }
 

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Threading.Tasks;
 using Abp.Application.Features;
 using Abp.Authorization;
@@ -6,7 +6,8 @@ using Abp.Configuration.Startup;
 using Abp.Dependency;
 using Abp.Domain.Uow;
 using Abp.Runtime.Session;
-using Castle.MicroKernel.Registration;
+using Autofac;
+using Autofac.Extras.DynamicProxy;
 using NSubstitute;
 using Shouldly;
 using Xunit;
@@ -22,28 +23,39 @@ namespace Abp.Tests.Authorization
 
         public AuthorizationInterceptor_Tests()
         {
+            var iocMgr = (IocManager)LocalIocManager;
+
             //SUT: AuthorizationInterceptor and AuthorizeAttributeHelper
-            LocalIocManager.IocContainer.Register(
-                Component.For<IFeatureChecker>().Instance(Substitute.For<IFeatureChecker>())
-                );
+            iocMgr.Builder.RegisterInstance(Substitute.For<IFeatureChecker>()).As<IFeatureChecker>();
 
             LocalIocManager.Register<IAuthorizationConfiguration, AuthorizationConfiguration>();
             LocalIocManager.Register<IMultiTenancyConfig, MultiTenancyConfig>();
             LocalIocManager.Register<AuthorizationInterceptor>(DependencyLifeStyle.Transient);
             LocalIocManager.Register<AbpAsyncDeterminationInterceptor<AuthorizationInterceptor>>(DependencyLifeStyle.Transient);
             LocalIocManager.Register<IAuthorizationHelper, AuthorizationHelper>(DependencyLifeStyle.Transient);
-            LocalIocManager.IocContainer.Register(
-                Component.For<MyTestClassToBeAuthorized_Sync>().Interceptors<AbpAsyncDeterminationInterceptor<AuthorizationInterceptor>>().LifestyleTransient(),
-                Component.For<MyTestClassToBeAuthorized_Async>().Interceptors<AbpAsyncDeterminationInterceptor<AuthorizationInterceptor>>().LifestyleTransient(),
-                Component.For<MyTestClassToBeAllowProtected_Async>().Interceptors<AbpAsyncDeterminationInterceptor<AuthorizationInterceptor>>().LifestyleTransient(),
-                Component.For<MyTestClassToBeAllowProtected_Sync>().Interceptors<AbpAsyncDeterminationInterceptor<AuthorizationInterceptor>>().LifestyleTransient()
-                );
+
+            iocMgr.Builder.RegisterType<MyTestClassToBeAuthorized_Sync>()
+                .EnableClassInterceptors()
+                .InterceptedBy(typeof(AbpAsyncDeterminationInterceptor<AuthorizationInterceptor>))
+                .InstancePerDependency();
+            iocMgr.Builder.RegisterType<MyTestClassToBeAuthorized_Async>()
+                .EnableClassInterceptors()
+                .InterceptedBy(typeof(AbpAsyncDeterminationInterceptor<AuthorizationInterceptor>))
+                .InstancePerDependency();
+            iocMgr.Builder.RegisterType<MyTestClassToBeAllowProtected_Async>()
+                .EnableClassInterceptors()
+                .InterceptedBy(typeof(AbpAsyncDeterminationInterceptor<AuthorizationInterceptor>))
+                .InstancePerDependency();
+            iocMgr.Builder.RegisterType<MyTestClassToBeAllowProtected_Sync>()
+                .EnableClassInterceptors()
+                .InterceptedBy(typeof(AbpAsyncDeterminationInterceptor<AuthorizationInterceptor>))
+                .InstancePerDependency();
 
             //Mock session
             var session = Substitute.For<IAbpSession>();
             session.TenantId.Returns(1);
             session.UserId.Returns(1);
-            LocalIocManager.IocContainer.Register(Component.For<IAbpSession>().Instance(session));
+            iocMgr.Builder.RegisterInstance(session).As<IAbpSession>();
 
             //Mock permission checker
             var permissionChecker = Substitute.For<IPermissionChecker>();
@@ -55,7 +67,8 @@ namespace Abp.Tests.Authorization
             permissionChecker.IsGranted("Permission2").Returns(true);
             permissionChecker.IsGranted("Permission3").Returns(false); //Permission3 is not granted
 
-            LocalIocManager.IocContainer.Register(Component.For<IPermissionChecker>().Instance(permissionChecker));
+            iocMgr.Builder.RegisterInstance(permissionChecker).As<IPermissionChecker>();
+            iocMgr.BuildContainer();
 
             _syncObj = LocalIocManager.Resolve<MyTestClassToBeAuthorized_Sync>();
             _asyncObj = LocalIocManager.Resolve<MyTestClassToBeAuthorized_Async>();

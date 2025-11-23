@@ -1,7 +1,7 @@
+using System;
 using System.Linq;
 using System.Reflection;
 using Abp.Dependency;
-using Castle.Core;
 
 namespace Abp.Domain.Uow
 {
@@ -16,17 +16,9 @@ namespace Abp.Domain.Uow
         /// <param name="iocManager">IOC manager</param>
         public static void Initialize(IIocManager iocManager)
         {
-            iocManager.IocContainer.Kernel.ComponentRegistered += (key, handler) =>
-            {
-                var implementationType = handler.ComponentModel.Implementation.GetTypeInfo();
-
-                if (ShouldIntercept(iocManager, implementationType))
-                {
-                    handler.ComponentModel.Interceptors.Add(
-                        new InterceptorReference(typeof(AbpAsyncDeterminationInterceptor<UnitOfWorkInterceptor>))
-                    );
-                }
-            };
+            // Note: Interceptors are now automatically applied via BasicConventionalRegistrar
+            // using Autofac.Extras.DynamicProxy's EnableInterfaceInterceptors
+            // This method is kept for backwards compatibility but does nothing
         }
 
         private static bool ShouldIntercept(IIocManager iocManager, TypeInfo implementationType)

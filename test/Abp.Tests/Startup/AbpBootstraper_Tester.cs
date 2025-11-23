@@ -67,23 +67,10 @@ namespace Abp.Tests.Startup
             _otherModule = otherModule;
         }
 
-        public override void PreInitialize()
-        {
-            base.PreInitialize();
-            _otherModule.PreInitializeCount.ShouldBe(1);
-            _otherModule.CallMeOnStartup();
-        }
-
         public override void Initialize()
         {
             base.Initialize();
             _otherModule.InitializeCount.ShouldBe(1);
-        }
-
-        public override void PostInitialize()
-        {
-            base.PostInitialize();
-            _otherModule.PostInitializeCount.ShouldBe(1);
         }
 
         public override void Shutdown()
@@ -118,21 +105,9 @@ namespace Abp.Tests.Startup
 
         public int ShutdownCount { get; private set; }
 
-        public override void PreInitialize()
-        {
-            IocManager.ShouldNotBe(null);
-            Configuration.ShouldNotBe(null);
-            PreInitializeCount++;
-        }
-
         public override void Initialize()
         {
             InitializeCount++;
-        }
-
-        public override void PostInitialize()
-        {
-            PostInitializeCount++;
         }
 
         public override void Shutdown()

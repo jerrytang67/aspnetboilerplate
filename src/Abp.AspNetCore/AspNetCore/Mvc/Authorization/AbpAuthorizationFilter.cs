@@ -1,5 +1,6 @@
 using System;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 using Abp.AspNetCore.Mvc.Extensions;
 using Abp.AspNetCore.Mvc.Results;
 using Abp.Authorization;
@@ -7,7 +8,7 @@ using Abp.Dependency;
 using Abp.Events.Bus;
 using Abp.Events.Bus.Exceptions;
 using Abp.Web.Models;
-using Castle.Core.Logging;
+using Abp.Logging;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -15,91 +16,64 @@ using Microsoft.AspNetCore.Mvc.Filters;
 
 namespace Abp.AspNetCore.Mvc.Authorization;
 
-public class AbpAuthorizationFilter : IAsyncAuthorizationFilter, ITransientDependency
-{
-    public ILogger Logger { get; set; }
-
-    private readonly IAuthorizationHelper _authorizationHelper;
-    private readonly IErrorInfoBuilder _errorInfoBuilder;
-    private readonly IEventBus _eventBus;
-
-    public AbpAuthorizationFilter(
-        IAuthorizationHelper authorizationHelper,
-        IErrorInfoBuilder errorInfoBuilder,
-        IEventBus eventBus)
-    {
-        _authorizationHelper = authorizationHelper;
-        _errorInfoBuilder = errorInfoBuilder;
-        _eventBus = eventBus;
-        Logger = NullLogger.Instance;
-    }
-
-    public virtual async Task OnAuthorizationAsync(AuthorizationFilterContext context)
-    {
+public class AbpAuthorizationFilter(
+    IAuthorizationHelper authorizationHelper,
+    IErrorInfoBuilder errorInfoBuilder,
+    IEventBus eventBus,
+    ILogger<AbpAuthorizationFilter> logger)
+    : IAsyncAuthorizationFilter, ITransientDependency {
+    public virtual async Task OnAuthorizationAsync(AuthorizationFilterContext context) {
         var endpoint = context?.HttpContext?.GetEndpoint();
         // Allow Anonymous skips all authorization
-        if (endpoint?.Metadata.GetMetadata<IAllowAnonymous>() != null)
-        {
+        if (endpoint?.Metadata.GetMetadata<IAllowAnonymous>() != null) {
             return;
         }
 
-        if (!context.ActionDescriptor.IsControllerAction())
-        {
+        if (!context.ActionDescriptor.IsControllerAction()) {
             return;
         }
 
         //TODO: Avoid using try/catch, use conditional checking
-        try
-        {
-            await _authorizationHelper.AuthorizeAsync(
+        try {
+            await authorizationHelper.AuthorizeAsync(
                 context.ActionDescriptor.GetMethodInfo(),
                 context.ActionDescriptor.GetMethodInfo().DeclaringType
             );
         }
-        catch (AbpAuthorizationException ex)
-        {
-            Logger.Warn(ex.ToString(), ex);
+        catch (AbpAuthorizationException ex) {
+            logger.LogWarning(ex.ToString(), ex);
 
-            await _eventBus.TriggerAsync(this, new AbpHandledExceptionData(ex));
+            await eventBus.TriggerAsync(this, new AbpHandledExceptionData(ex));
 
             var isAuthenticated = context.HttpContext.User.Identity.IsAuthenticated;
 
-            if (ActionResultHelper.IsObjectResult(context.ActionDescriptor.GetMethodInfo().ReturnType))
-            {
-                context.Result = new ObjectResult(new AjaxResponse(_errorInfoBuilder.BuildForException(ex), true))
-                {
+            if (ActionResultHelper.IsObjectResult(context.ActionDescriptor.GetMethodInfo().ReturnType)) {
+                context.Result = new ObjectResult(new AjaxResponse(errorInfoBuilder.BuildForException(ex), true)) {
                     StatusCode = isAuthenticated
                         ? (int)System.Net.HttpStatusCode.Forbidden
                         : (int)System.Net.HttpStatusCode.Unauthorized
                 };
             }
-            else
-            {
-                if (isAuthenticated)
-                {
+            else {
+                if (isAuthenticated) {
                     context.Result = new ForbidResult();
                 }
-                else
-                {
+                else {
                     context.Result = new ChallengeResult();
                 }
             }
         }
-        catch (Exception ex)
-        {
-            Logger.Error(ex.ToString(), ex);
+        catch (Exception ex) {
+            logger.LogError(ex.ToString(), ex);
 
-            await _eventBus.TriggerAsync(this, new AbpHandledExceptionData(ex));
+            await eventBus.TriggerAsync(this, new AbpHandledExceptionData(ex));
 
-            if (ActionResultHelper.IsObjectResult(context.ActionDescriptor.GetMethodInfo().ReturnType))
-            {
-                context.Result = new ObjectResult(new AjaxResponse(_errorInfoBuilder.BuildForException(ex)))
-                {
+            if (ActionResultHelper.IsObjectResult(context.ActionDescriptor.GetMethodInfo().ReturnType)) {
+                context.Result = new ObjectResult(new AjaxResponse(errorInfoBuilder.BuildForException(ex))) {
                     StatusCode = (int)System.Net.HttpStatusCode.InternalServerError
                 };
             }
-            else
-            {
+            else {
                 //TODO: How to return Error page?
                 context.Result = new StatusCodeResult((int)System.Net.HttpStatusCode.InternalServerError);
             }

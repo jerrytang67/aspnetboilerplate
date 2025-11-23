@@ -12,9 +12,10 @@ namespace Abp.Zero.Ldap
     [DependsOn(typeof (AbpZeroCommonModule))]
     public class AbpZeroLdapModule : AbpModule
     {
-        public override void PreInitialize()
-        {
+        public override void ConfigureServices() {
             IocManager.Register<IAbpZeroLdapModuleConfig, AbpZeroLdapModuleConfig>();
+
+            IocManager.RegisterAssemblyByConvention(Assembly.GetExecutingAssembly());
 
             Configuration.Localization.Sources.Extensions.Add(
                 new LocalizationSourceExtensionInfo(
@@ -22,15 +23,16 @@ namespace Abp.Zero.Ldap
                     new XmlEmbeddedFileLocalizationDictionaryProvider(
                         Assembly.GetExecutingAssembly(),
                         "Abp.Zero.Ldap.Localization.Source")
-                    )
-                );
+                )
+            );
 
             Configuration.Settings.Providers.Add<LdapSettingProvider>();
         }
 
+
         public override void Initialize()
         {
-            IocManager.RegisterAssemblyByConvention(Assembly.GetExecutingAssembly());
+
         }
     }
 }

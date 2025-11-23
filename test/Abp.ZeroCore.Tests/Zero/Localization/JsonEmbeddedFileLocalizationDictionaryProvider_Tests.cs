@@ -30,8 +30,7 @@ public class JsonEmbeddedFileLocalizationDictionaryProvider_Tests : AbpIntegrate
 
 public class MyCustomJsonLangModule : AbpModule
 {
-    public override void PreInitialize()
-    {
+    public override void ConfigureServices() {
         Configuration.Localization.Sources.Clear();
 
         Configuration.Localization.Sources.Add(
@@ -71,5 +70,10 @@ public class MyCustomJsonLangModule : AbpModule
                 )
             )
         );
+    }
+
+    public override void Initialize()
+    {
+
     }
 }

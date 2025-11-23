@@ -1,43 +1,31 @@
-﻿using System.Threading;
+using System.Threading;
+using Microsoft.Extensions.Logging;
 using Abp.Dependency;
 using Castle.Core;
-using Castle.Core.Logging;
+using Abp.Logging;
 
-namespace Abp.Domain.Uow
-{
+namespace Abp.Domain.Uow {
     /// <summary>
     /// CallContext implementation of <see cref="ICurrentUnitOfWorkProvider"/>. 
     /// This is the default implementation.
     /// </summary>
-    public class AsyncLocalCurrentUnitOfWorkProvider : ICurrentUnitOfWorkProvider, ITransientDependency
-    {
+    public class AsyncLocalCurrentUnitOfWorkProvider(ILogger<AsyncLocalCurrentUnitOfWorkProvider> logger) : ICurrentUnitOfWorkProvider, ITransientDependency {
         /// <inheritdoc />
         [DoNotWire]
-        public IUnitOfWork Current
-        {
+        public IUnitOfWork Current {
             get { return GetCurrentUow(); }
             set { SetCurrentUow(value); }
         }
 
-        public ILogger Logger { get; set; }
-
         private static readonly AsyncLocal<LocalUowWrapper> AsyncLocalUow = new AsyncLocal<LocalUowWrapper>();
 
-        public AsyncLocalCurrentUnitOfWorkProvider()
-        {
-            Logger = NullLogger.Instance;
-        }
-
-        private static IUnitOfWork GetCurrentUow()
-        {
+        private static IUnitOfWork GetCurrentUow() {
             var uow = AsyncLocalUow.Value?.UnitOfWork;
-            if (uow == null)
-            {
+            if (uow == null) {
                 return null;
             }
 
-            if (uow.IsDisposed)
-            {
+            if (uow.IsDisposed) {
                 AsyncLocalUow.Value = null;
                 return null;
             }
@@ -45,19 +33,14 @@ namespace Abp.Domain.Uow
             return uow;
         }
 
-        private static void SetCurrentUow(IUnitOfWork value)
-        {
-            lock (AsyncLocalUow)
-            {
-                if (value == null)
-                {
-                    if (AsyncLocalUow.Value == null)
-                    {
+        private static void SetCurrentUow(IUnitOfWork value) {
+            lock (AsyncLocalUow) {
+                if (value == null) {
+                    if (AsyncLocalUow.Value == null) {
                         return;
                     }
 
-                    if (AsyncLocalUow.Value.UnitOfWork?.Outer == null)
-                    {
+                    if (AsyncLocalUow.Value.UnitOfWork?.Outer == null) {
                         AsyncLocalUow.Value.UnitOfWork = null;
                         AsyncLocalUow.Value = null;
                         return;
@@ -65,12 +48,9 @@ namespace Abp.Domain.Uow
 
                     AsyncLocalUow.Value.UnitOfWork = AsyncLocalUow.Value.UnitOfWork.Outer;
                 }
-                else
-                {
-                    if (AsyncLocalUow.Value?.UnitOfWork == null)
-                    {
-                        if (AsyncLocalUow.Value != null)
-                        {
+                else {
+                    if (AsyncLocalUow.Value?.UnitOfWork == null) {
+                        if (AsyncLocalUow.Value != null) {
                             AsyncLocalUow.Value.UnitOfWork = value;
                         }
 
@@ -84,12 +64,10 @@ namespace Abp.Domain.Uow
             }
         }
 
-        private class LocalUowWrapper
-        {
+        private class LocalUowWrapper {
             public IUnitOfWork UnitOfWork { get; set; }
 
-            public LocalUowWrapper(IUnitOfWork unitOfWork)
-            {
+            public LocalUowWrapper(IUnitOfWork unitOfWork) {
                 UnitOfWork = unitOfWork;
             }
         }

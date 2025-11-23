@@ -7,8 +7,8 @@ using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
-using Abp.Domain.Uow;
 using Microsoft.Extensions.Logging;
+using Abp.Domain.Uow;
 using OpenIddict.Abstractions;
 
 namespace Abp.OpenIddict.Scopes;

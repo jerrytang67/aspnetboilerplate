@@ -5,7 +5,6 @@ using System.Transactions;
 using Abp.Data;
 using Abp.Dependency;
 using Abp.Domain.Uow;
-using Abp.EntityFramework;
 using Abp.Extensions;
 using Abp.MultiTenancy;
 

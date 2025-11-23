@@ -1,14 +1,16 @@
 using System;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 using Abp.Dependency;
 using Abp.RealTime;
 using Abp.Runtime.Session;
-using Castle.Core.Logging;
+using Abp.Logging;
 
 namespace Abp.AspNetCore.SignalR.Hubs;
 
 public abstract class OnlineClientHubBase : AbpHubBase, ITransientDependency
 {
+    private readonly ILogger<OnlineClientHubBase> _logger;
     protected IOnlineClientManager OnlineClientManager { get; }
     protected IOnlineClientInfoProvider OnlineClientInfoProvider { get; }
 
@@ -17,12 +19,14 @@ public abstract class OnlineClientHubBase : AbpHubBase, ITransientDependency
     /// </summary>
     protected OnlineClientHubBase(
         IOnlineClientManager onlineClientManager,
-        IOnlineClientInfoProvider clientInfoProvider)
+        IOnlineClientInfoProvider clientInfoProvider,
+        ILogger<OnlineClientHubBase> logger
+        )
     {
+        _logger = logger;
         OnlineClientManager = onlineClientManager;
         OnlineClientInfoProvider = clientInfoProvider;
 
-        Logger = NullLogger.Instance;
 #pragma warning disable CS0618 // Type or member is obsolete, this line will be removed once the AbpSession property is removed
         AbpSession = NullAbpSession.Instance;
 #pragma warning restore CS0618 // Type or member is obsolete, this line will be removed once the AbpSession property is removed
@@ -34,7 +38,7 @@ public abstract class OnlineClientHubBase : AbpHubBase, ITransientDependency
 
         var client = CreateClientForCurrentConnection();
 
-        Logger.Debug("A client is connected: " + client);
+        _logger.LogDebug("A client is connected: " + client);
 
         await OnlineClientManager.AddAsync(client);
     }
@@ -43,7 +47,7 @@ public abstract class OnlineClientHubBase : AbpHubBase, ITransientDependency
     {
         await base.OnDisconnectedAsync(exception);
 
-        Logger.Debug("A client is disconnected: " + Context.ConnectionId);
+        _logger.LogDebug("A client is disconnected: " + Context.ConnectionId);
 
         try
         {
@@ -51,7 +55,7 @@ public abstract class OnlineClientHubBase : AbpHubBase, ITransientDependency
         }
         catch (Exception ex)
         {
-            Logger.Warn(ex.ToString(), ex);
+            _logger.LogWarning(ex.ToString(), ex);
         }
     }
 

@@ -7,10 +7,14 @@ namespace Abp.OpenIddict.EntityFrameworkCore;
 [DependsOn(typeof(AbpZeroCoreOpenIddictModule), typeof(AbpZeroCoreEntityFrameworkCoreModule))]
 public class AbpZeroCoreOpenIddictEntityFrameworkCoreModule : AbpModule
 {
-    public override void Initialize()
-    {
+    public override void ConfigureServices() {
         IocManager.RegisterAssemblyByConvention(
             typeof(AbpZeroCoreOpenIddictEntityFrameworkCoreModule).GetAssembly()
         );
+    }
+
+    public override void Initialize()
+    {
+
     }
 }

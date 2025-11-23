@@ -7,7 +7,7 @@ using Abp.Linq;
 using Abp.Organizations;
 using Abp.Runtime.Session;
 using Abp.Zero;
-using Castle.Core.Logging;
+using Abp.Logging;
 using JetBrains.Annotations;
 using Microsoft.AspNetCore.Identity;
 using System;
@@ -18,6 +18,7 @@ using System.Security.Claims;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Transactions;
+using Microsoft.Extensions.Logging;
 
 namespace Abp.Authorization.Users;
 
@@ -87,7 +88,8 @@ public class AbpUserStore<TRole, TUser> :
         IRepository<UserPermissionSetting, long> userPermissionSettingRepository,
         IRepository<UserOrganizationUnit, long> userOrganizationUnitRepository,
         IRepository<OrganizationUnitRole, long> organizationUnitRoleRepository,
-        IRepository<UserToken, long> userTokenRepository)
+        IRepository<UserToken, long> userTokenRepository,
+        ILogger<AbpUserStore<TRole, TUser>> logger)
     {
         _unitOfWorkManager = unitOfWorkManager;
         UserRepository = userRepository;
@@ -102,7 +104,7 @@ public class AbpUserStore<TRole, TUser> :
 
         AbpSession = NullAbpSession.Instance;
         ErrorDescriber = new IdentityErrorDescriber();
-        Logger = NullLogger.Instance;
+        Logger = logger;
         AsyncQueryableExecuter = NullAsyncQueryableExecuter.Instance;
     }
 
@@ -350,7 +352,7 @@ public class AbpUserStore<TRole, TUser> :
             }
             catch (AbpDbConcurrencyException ex)
             {
-                Logger.Warn(ex.ToString(), ex);
+                Logger.LogWarning(ex.ToString(), ex);
                 return IdentityResult.Failed(ErrorDescriber.ConcurrencyFailure());
             }
 
@@ -384,7 +386,7 @@ public class AbpUserStore<TRole, TUser> :
             }
             catch (AbpDbConcurrencyException ex)
             {
-                Logger.Warn(ex.ToString(), ex);
+                Logger.LogWarning(ex.ToString(), ex);
                 return IdentityResult.Failed(ErrorDescriber.ConcurrencyFailure());
             }
 
@@ -418,7 +420,7 @@ public class AbpUserStore<TRole, TUser> :
             }
             catch (AbpDbConcurrencyException ex)
             {
-                Logger.Warn(ex.ToString(), ex);
+                Logger.LogWarning(ex.ToString(), ex);
                 return IdentityResult.Failed(ErrorDescriber.ConcurrencyFailure());
             }
 
@@ -452,7 +454,7 @@ public class AbpUserStore<TRole, TUser> :
             }
             catch (AbpDbConcurrencyException ex)
             {
-                Logger.Warn(ex.ToString(), ex);
+                Logger.LogWarning(ex.ToString(), ex);
                 return IdentityResult.Failed(ErrorDescriber.ConcurrencyFailure());
             }
 

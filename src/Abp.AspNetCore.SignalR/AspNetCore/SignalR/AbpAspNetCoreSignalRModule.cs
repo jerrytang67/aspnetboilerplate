@@ -8,13 +8,14 @@ namespace Abp.AspNetCore.SignalR;
 /// ABP ASP.NET Core SignalR integration module.
 /// </summary>
 [DependsOn(typeof(AbpKernelModule))]
-public class AbpAspNetCoreSignalRModule : AbpModule
-{
-    /// <inheritdoc/>
-    public override void Initialize()
-    {
+public class AbpAspNetCoreSignalRModule : AbpModule {
+    public override void ConfigureServices() {
         IocManager.RegisterAssemblyByConvention(Assembly.GetExecutingAssembly());
 
         Configuration.Notifications.Notifiers.Add<SignalRRealTimeNotifier>();
+    }
+
+    /// <inheritdoc/>
+    public override void Initialize() {
     }
 }

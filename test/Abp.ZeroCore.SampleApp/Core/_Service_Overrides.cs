@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Security.Claims;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 using Abp.Application.Editions;
 using Abp.Application.Features;
 using Abp.Authorization;
@@ -20,13 +21,11 @@ using Abp.Zero.Configuration;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace Abp.ZeroCore.SampleApp.Core;
 
-public class UserManager : AbpUserManager<Role, User>
-{
+public class UserManager : AbpUserManager<Role, User> {
     public UserManager(
         RoleManager roleManager,
         UserStore userStore,
@@ -64,13 +63,11 @@ public class UserManager : AbpUserManager<Role, User>
         organizationUnitSettings,
         settingManager,
         userLoginRepository
-        )
-    {
+    ) {
     }
 }
 
-public class TenantManager : AbpTenantManager<Tenant, User>
-{
+public class TenantManager : AbpTenantManager<Tenant, User> {
     public TenantManager(
         IRepository<Tenant> tenantRepository,
         IRepository<TenantFeatureSetting, long> tenantFeatureRepository,
@@ -80,13 +77,11 @@ public class TenantManager : AbpTenantManager<Tenant, User>
             tenantRepository,
             tenantFeatureRepository,
             editionManager,
-            featureValueStore)
-    {
+            featureValueStore) {
     }
 }
 
-public class EditionManager : AbpEditionManager
-{
+public class EditionManager : AbpEditionManager {
     public const string DefaultEditionName = "Standard";
 
     public EditionManager(
@@ -94,15 +89,13 @@ public class EditionManager : AbpEditionManager
         IAbpZeroFeatureValueStore featureValueStore,
         IUnitOfWorkManager unitOfWorkManager)
         : base(
-           editionRepository,
-           featureValueStore,
-           unitOfWorkManager)
-    {
+            editionRepository,
+            featureValueStore,
+            unitOfWorkManager) {
     }
 }
 
-public class RoleManager : AbpRoleManager<Role, User>
-{
+public class RoleManager : AbpRoleManager<Role, User> {
     public RoleManager(
         RoleStore store,
         IEnumerable<IRoleValidator<Role>> roleValidators,
@@ -126,13 +119,11 @@ public class RoleManager : AbpRoleManager<Role, User>
         unitOfWorkManager,
         roleManagementConfig,
         organizationUnitRepository,
-        organizationUnitRoleRepository)
-    {
+        organizationUnitRoleRepository) {
     }
 }
 
-public class LogInManager : AbpLogInManager<Tenant, Role, User>
-{
+public class LogInManager : AbpLogInManager<Tenant, Role, User> {
     public LogInManager(
         AbpUserManager<Role, User> userManager,
         IMultiTenancyConfig multiTenancyConfig,
@@ -156,21 +147,13 @@ public class LogInManager : AbpLogInManager<Tenant, Role, User>
         iocResolver,
         passwordHasher,
         roleManager,
-        claimsPrincipalFactory)
-    {
+        claimsPrincipalFactory) {
     }
 }
 
-public class PermissionChecker : PermissionChecker<Role, User>
-{
-    public PermissionChecker(UserManager userManager)
-        : base(userManager)
-    {
-    }
-}
+public class PermissionChecker(UserManager userManager, IIocManager iocManager) : PermissionChecker<Role, User>(userManager, iocManager);
 
-public class FeatureValueStore : AbpFeatureValueStore<Tenant, User>
-{
+public class FeatureValueStore : AbpFeatureValueStore<Tenant, User> {
     public FeatureValueStore(ICacheManager cacheManager,
         IRepository<TenantFeatureSetting, long> tenantFeatureRepository,
         IRepository<Tenant> tenantRepository,
@@ -183,40 +166,35 @@ public class FeatureValueStore : AbpFeatureValueStore<Tenant, User>
             tenantRepository,
             editionFeatureRepository,
             featureManager,
-            unitOfWorkManager)
-    {
-
+            unitOfWorkManager) {
     }
 }
 
-public class RoleStore : AbpRoleStore<Role, User>
-{
+public class RoleStore : AbpRoleStore<Role, User> {
     public RoleStore(
         IUnitOfWorkManager unitOfWorkManager,
         IRepository<Role> roleRepository,
-        IRepository<RolePermissionSetting, long> rolePermissionSettingRepository
+        IRepository<RolePermissionSetting, long> rolePermissionSettingRepository,
+        ILogger<RoleStore> logger
     ) : base(
         unitOfWorkManager,
         roleRepository,
-        rolePermissionSettingRepository)
-    {
+        rolePermissionSettingRepository,
+        logger) {
     }
 }
 
-public class SecurityStampValidator : AbpSecurityStampValidator<Tenant, Role, User>
-{
+public class SecurityStampValidator : AbpSecurityStampValidator<Tenant, Role, User> {
     public SecurityStampValidator(
         IOptions<SecurityStampValidatorOptions> options,
         SignInManager signInManager,
         ILoggerFactory loggerFactory,
         IUnitOfWorkManager unitOfWorkManager)
-        : base(options, signInManager, loggerFactory, unitOfWorkManager)
-    {
+        : base(options, signInManager, loggerFactory, unitOfWorkManager) {
     }
 }
 
-public class SignInManager : AbpSignInManager<Tenant, Role, User>
-{
+public class SignInManager : AbpSignInManager<Tenant, Role, User> {
     public SignInManager(
         UserManager userManager,
         IHttpContextAccessor contextAccessor,
@@ -236,13 +214,11 @@ public class SignInManager : AbpSignInManager<Tenant, Role, User>
         unitOfWorkManager,
         settingManager,
         schemes,
-        userConfirmation)
-    {
+        userConfirmation) {
     }
 }
 
-public class UserStore : AbpUserStore<Role, User>
-{
+public class UserStore : AbpUserStore<Role, User> {
     public UserStore(
         IUnitOfWorkManager unitOfWorkManager,
         IRepository<User, long> userRepository,
@@ -253,8 +229,9 @@ public class UserStore : AbpUserStore<Role, User>
         IRepository<UserPermissionSetting, long> userPermissionSettingRepository,
         IRepository<UserOrganizationUnit, long> userOrganizationUnitRepository,
         IRepository<OrganizationUnitRole, long> organizationUnitRoleRepository,
-        IRepository<UserToken, long> userTokenRepository
-        ) : base(
+        IRepository<UserToken, long> userTokenRepository,
+        ILogger<UserStore> logger
+    ) : base(
         unitOfWorkManager,
         userRepository,
         roleRepository,
@@ -264,13 +241,12 @@ public class UserStore : AbpUserStore<Role, User>
         userPermissionSettingRepository,
         userOrganizationUnitRepository,
         organizationUnitRoleRepository,
-        userTokenRepository)
-    {
+        userTokenRepository,
+        logger) {
     }
 }
 
-public class UserClaimsPrincipalFactory : AbpUserClaimsPrincipalFactory<User, Role>
-{
+public class UserClaimsPrincipalFactory : AbpUserClaimsPrincipalFactory<User, Role> {
     public UserClaimsPrincipalFactory(
         UserManager userManager,
         RoleManager roleManager,
@@ -280,14 +256,11 @@ public class UserClaimsPrincipalFactory : AbpUserClaimsPrincipalFactory<User, Ro
             userManager,
             roleManager,
             optionsAccessor,
-            unitOfWorkManager)
-    {
-
+            unitOfWorkManager) {
     }
 
     [UnitOfWork]
-    public override async Task<ClaimsPrincipal> CreateAsync(User user)
-    {
+    public override async Task<ClaimsPrincipal> CreateAsync(User user) {
         return await base.CreateAsync(user);
     }
 }

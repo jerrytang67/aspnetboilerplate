@@ -1,5 +1,5 @@
 using System;
-using Castle.Windsor;
+using Autofac;
 
 namespace Abp.Dependency
 {
@@ -9,9 +9,22 @@ namespace Abp.Dependency
     public interface IIocManager : IIocRegistrar, IIocResolver, IDisposable
     {
         /// <summary>
-        /// Reference to the Castle Windsor Container.
+        /// Reference to the Autofac Container.
         /// </summary>
-        IWindsorContainer IocContainer { get; }
+        IContainer IocContainer { get; }
+
+        /// <summary>
+        /// Gets a value indicating whether the container has been built.
+        /// Once built, no further service registrations are allowed.
+        /// </summary>
+        bool IsContainerBuilt { get; }
+
+        /// <summary>
+        /// Builds the container.
+        /// This method can only be called once. After the container is built, no further service registrations are allowed.
+        /// </summary>
+        /// <exception cref="AbpException">Thrown if the container is already built</exception>
+        void BuildContainer();
 
         /// <summary>
         /// Checks whether given type is registered before.

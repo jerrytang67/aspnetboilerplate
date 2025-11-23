@@ -1,11 +1,12 @@
-﻿using System.Globalization;
+using System.Globalization;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 using Abp.Configuration;
 using Abp.Domain.Uow;
 using Abp.Localization;
 using Abp.Localization.Sources;
 using Abp.ObjectMapping;
-using Castle.Core.Logging;
+using Abp.Logging;
 using Quartz;
 
 namespace Abp.Quartz

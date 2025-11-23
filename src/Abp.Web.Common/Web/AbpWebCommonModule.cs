@@ -19,8 +19,9 @@ namespace Abp.Web
     public class AbpWebCommonModule : AbpModule
     {
         /// <inheritdoc/>
-        public override void PreInitialize()
+        public override void ConfigureServices()
         {
+            // Register configuration services
             IocManager.Register<IWebMultiTenancyConfiguration, WebMultiTenancyConfiguration>();
             IocManager.Register<IApiProxyScriptingConfiguration, ApiProxyScriptingConfiguration>();
             IocManager.Register<IAbpAntiForgeryConfiguration, AbpAntiForgeryConfiguration>();
@@ -28,20 +29,40 @@ namespace Abp.Web
             IocManager.Register<IAbpWebCommonModuleConfiguration, AbpWebCommonModuleConfiguration>();
             IocManager.Register<IJavaScriptMinifier, NUglifyJavaScriptMinifier>();
 
-            Configuration.Modules.AbpWebCommon().ApiProxyScripting.Generators[JQueryProxyScriptGenerator.Name] = typeof(JQueryProxyScriptGenerator);
+            // IMPORTANT: Store the configuration instance in the Configuration dictionary
+            // Create configuration with its dependencies
+            var multiTenancyConfig = new WebMultiTenancyConfiguration();
+            var apiProxyScriptingConfig = new ApiProxyScriptingConfiguration();
+            var antiForgeryConfig = new AbpAntiForgeryConfiguration();
+            var embeddedResourcesConfig = new WebEmbeddedResourcesConfiguration();
+            var webCommonConfig = new AbpWebCommonModuleConfiguration(
+                apiProxyScriptingConfig,
+                antiForgeryConfig,
+                embeddedResourcesConfig,
+                multiTenancyConfig
+            );
 
+            Configuration.Set(typeof(IAbpWebCommonModuleConfiguration).FullName, webCommonConfig);
+
+            // Register assembly by convention
+            IocManager.RegisterAssemblyByConvention(typeof(AbpWebCommonModule).GetAssembly());
+
+
+            // Localization source registration
             Configuration.Localization.Sources.Add(
                 new DictionaryBasedLocalizationSource(
                     AbpWebConsts.LocalizationSourceName,
                     new XmlEmbeddedFileLocalizationDictionaryProvider(
                         typeof(AbpWebCommonModule).GetAssembly(), "Abp.Web.Localization.AbpWebXmlSource"
-                        )));
+                    )));
         }
 
         /// <inheritdoc/>
         public override void Initialize()
         {
-            IocManager.RegisterAssemblyByConvention(typeof(AbpWebCommonModule).GetAssembly());            
+            // Configuration logic that uses registered services (moved from ConfigureServices)
+            // This must be done AFTER container is built because it resolves services from the container
+            Configuration.Modules.AbpWebCommon().ApiProxyScripting.Generators[JQueryProxyScriptGenerator.Name] = typeof(JQueryProxyScriptGenerator);
         }
     }
 }

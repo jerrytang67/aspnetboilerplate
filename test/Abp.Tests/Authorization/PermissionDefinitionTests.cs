@@ -1,13 +1,12 @@
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading.Tasks;
 using Abp.Application.Features;
 using Abp.Authorization;
 using Abp.Configuration.Startup;
+using Abp.Dependency;
 using Abp.Domain.Uow;
 using Abp.Localization;
-using Abp.TestBase.Runtime.Session;
-using Castle.MicroKernel.Registration;
+using Autofac;
 using NSubstitute;
 using Shouldly;
 using Xunit;
@@ -23,16 +22,16 @@ namespace Abp.Tests.Authorization
             authorizationConfiguration.Providers.Add<MyAuthorizationProvider1>();
             authorizationConfiguration.Providers.Add<MyAuthorizationProvider2>();
 
-            LocalIocManager.IocContainer.Register(
-                Component.For<IFeatureDependencyContext, FeatureDependencyContext>().UsingFactoryMethod(() =>
-                    new FeatureDependencyContext(LocalIocManager, Substitute.For<IFeatureChecker>())),
-                Component.For<MyAuthorizationProvider1>().LifestyleTransient(),
-                Component.For<MyAuthorizationProvider2>().LifestyleTransient(),
-                Component.For<IUnitOfWorkManager, UnitOfWorkManager>().LifestyleTransient(),
-                Component.For<ICurrentUnitOfWorkProvider, AsyncLocalCurrentUnitOfWorkProvider>().LifestyleTransient(),
-                Component.For<IUnitOfWorkDefaultOptions, UnitOfWorkDefaultOptions>().LifestyleTransient(),
-                Component.For<IMultiTenancyConfig, MultiTenancyConfig>().LifestyleTransient()
-            );
+            var iocMgr = (IocManager)LocalIocManager;
+            iocMgr.Builder.Register(c => new FeatureDependencyContext(LocalIocManager, Substitute.For<IFeatureChecker>()))
+                .As<IFeatureDependencyContext>().As<FeatureDependencyContext>();
+            iocMgr.Builder.RegisterType<MyAuthorizationProvider1>().InstancePerDependency();
+            iocMgr.Builder.RegisterType<MyAuthorizationProvider2>().InstancePerDependency();
+            iocMgr.Builder.RegisterType<UnitOfWorkManager>().As<IUnitOfWorkManager>().InstancePerDependency();
+            iocMgr.Builder.RegisterType<AsyncLocalCurrentUnitOfWorkProvider>().As<ICurrentUnitOfWorkProvider>().InstancePerDependency();
+            iocMgr.Builder.RegisterType<UnitOfWorkDefaultOptions>().As<IUnitOfWorkDefaultOptions>().InstancePerDependency();
+            iocMgr.Builder.RegisterType<MultiTenancyConfig>().As<IMultiTenancyConfig>().InstancePerDependency();
+            iocMgr.BuildContainer();
 
             var permissionManager = new PermissionManager(LocalIocManager, authorizationConfiguration,
                 LocalIocManager.Resolve<IUnitOfWorkManager>(), LocalIocManager.Resolve<IMultiTenancyConfig>());
@@ -64,16 +63,15 @@ namespace Abp.Tests.Authorization
             var authorizationConfiguration = new AuthorizationConfiguration();
             authorizationConfiguration.Providers.Add<MyAuthorizationProviderWithCustomProperties>();
 
-            LocalIocManager.IocContainer.Register(
-                Component.For<IFeatureDependencyContext, FeatureDependencyContext>()
-                    .UsingFactoryMethod(() =>
-                        new FeatureDependencyContext(LocalIocManager, Substitute.For<IFeatureChecker>())),
-                Component.For<MyAuthorizationProviderWithCustomProperties>().LifestyleTransient(),
-                Component.For<IUnitOfWorkManager, UnitOfWorkManager>().LifestyleTransient(),
-                Component.For<ICurrentUnitOfWorkProvider, AsyncLocalCurrentUnitOfWorkProvider>().LifestyleTransient(),
-                Component.For<IUnitOfWorkDefaultOptions, UnitOfWorkDefaultOptions>().LifestyleTransient(),
-                Component.For<IMultiTenancyConfig, MultiTenancyConfig>().LifestyleTransient()
-            );
+            var iocMgr = (IocManager)LocalIocManager;
+            iocMgr.Builder.Register(c => new FeatureDependencyContext(LocalIocManager, Substitute.For<IFeatureChecker>()))
+                .As<IFeatureDependencyContext>().As<FeatureDependencyContext>();
+            iocMgr.Builder.RegisterType<MyAuthorizationProviderWithCustomProperties>().InstancePerDependency();
+            iocMgr.Builder.RegisterType<UnitOfWorkManager>().As<IUnitOfWorkManager>().InstancePerDependency();
+            iocMgr.Builder.RegisterType<AsyncLocalCurrentUnitOfWorkProvider>().As<ICurrentUnitOfWorkProvider>().InstancePerDependency();
+            iocMgr.Builder.RegisterType<UnitOfWorkDefaultOptions>().As<IUnitOfWorkDefaultOptions>().InstancePerDependency();
+            iocMgr.Builder.RegisterType<MultiTenancyConfig>().As<IMultiTenancyConfig>().InstancePerDependency();
+            iocMgr.BuildContainer();
 
             var permissionManager = new PermissionManager(LocalIocManager, authorizationConfiguration,
                 LocalIocManager.Resolve<IUnitOfWorkManager>(), LocalIocManager.Resolve<IMultiTenancyConfig>());

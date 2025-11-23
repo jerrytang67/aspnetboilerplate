@@ -10,28 +10,33 @@ namespace AbpAspNetCoreDemo.Core;
 [DependsOn(typeof(AbpAutoMapperModule))]
 public class AbpAspNetCoreDemoCoreModule : AbpModule
 {
-    public override void PreInitialize()
+    public override void ConfigureServices()
     {
+        // Register assembly by convention
+        IocManager.RegisterAssemblyByConvention(typeof(AbpAspNetCoreDemoCoreModule).GetAssembly());
+
         Configuration.Auditing.IsEnabledForAnonymousUsers = true;
 
+        // Configure localization
         Configuration.Localization.Languages.Add(new LanguageInfo("en", "English", isDefault: true));
+        Configuration.Localization.Languages.Add(new LanguageInfo("zh-cn", "简体中文"));
         Configuration.Localization.Languages.Add(new LanguageInfo("tr", "Türkçe"));
-        Configuration.Localization.Languages.Add(new LanguageInfo("pt-br", "Portuguese - Brazil"));
-        Configuration.Localization.Languages.Add(new LanguageInfo("en-gb", "English - United Kingdom"));
-        Configuration.Localization.Languages.Add(new LanguageInfo("ro", "Română"));
 
         Configuration.Localization.Sources.Add(
-            new DictionaryBasedLocalizationSource("AbpAspNetCoreDemoModule",
+            new DictionaryBasedLocalizationSource("demo",
                 new JsonEmbeddedFileLocalizationDictionaryProvider(
                     typeof(AbpAspNetCoreDemoCoreModule).GetAssembly(),
                     "AbpAspNetCoreDemo.Core.Localization.SourceFiles"
                 )
             )
         );
+
+
+
     }
 
     public override void Initialize()
     {
-        IocManager.RegisterAssemblyByConvention(typeof(AbpAspNetCoreDemoCoreModule).GetAssembly());
+
     }
 }

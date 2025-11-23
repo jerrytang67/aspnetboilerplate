@@ -1,5 +1,6 @@
 ﻿using Abp.Dependency;
-using Castle.MicroKernel.Registration;
+using Autofac;
+using Autofac.Extras.DynamicProxy;
 using FluentValidation;
 
 namespace Abp.FluentValidation
@@ -8,11 +9,13 @@ namespace Abp.FluentValidation
     {
         public void RegisterAssembly(IConventionalRegistrationContext context)
         {
-            context.IocManager.IocContainer.Register(
-                Classes.FromAssembly(context.Assembly)
-                    .BasedOn(typeof(IValidator<>)).WithService.Base()
-                    .LifestyleTransient()
-            );
+            var iocManager = (IocManager)context.IocManager;
+            var builder = iocManager.IocContainer != null ? new ContainerBuilder() : iocManager.Builder;
+
+            // Register all validators from the assembly
+            builder.RegisterAssemblyTypes(context.Assembly)
+                .AsClosedTypesOf(typeof(IValidator<>))
+                .InstancePerDependency();
         }
     }
 }

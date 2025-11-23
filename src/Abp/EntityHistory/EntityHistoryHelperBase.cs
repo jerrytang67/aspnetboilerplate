@@ -1,6 +1,7 @@
 using System;
 using System.Linq;
 using System.Reflection;
+using Microsoft.Extensions.Logging;
 using Abp.Auditing;
 using Abp.Domain.Entities;
 using Abp.Domain.Entities.Auditing;
@@ -8,7 +9,7 @@ using Abp.Domain.Uow;
 using Abp.Events.Bus.Entities;
 using Abp.Runtime.Session;
 using Abp.Timing;
-using Castle.Core.Logging;
+using Abp.Logging;
 
 namespace Abp.EntityHistory
 {
@@ -52,7 +53,7 @@ namespace Abp.EntityHistory
                 case EntityChangeType.Updated:
                     return (entity as IHasModificationTime)?.LastModificationTime ?? Clock.Now;
                 default:
-                    Logger.ErrorFormat("Unexpected {0} - {1}", nameof(entityChangeType), entityChangeType);
+                    Logger.LogError("Unexpected {0} - {1}", nameof(entityChangeType), entityChangeType);
                     return Clock.Now;
             }
         }

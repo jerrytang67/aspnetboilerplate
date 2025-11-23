@@ -11,7 +11,7 @@ public class TestController : DemoControllerBase
         return View();
     }
 
-    [Route("api/test/getArray")]
+    [Route("/api/test/getArray")]
     [HttpGet]
     public string TestGetArray(TestGetArrayModel model)
     {

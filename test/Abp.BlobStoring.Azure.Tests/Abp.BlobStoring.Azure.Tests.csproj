@@ -11,7 +11,6 @@
 	</ItemGroup>
 	
 	<ItemGroup>
-		<ProjectReference Include="..\..\src\Abp.BlobStoring.Azure\Abp.BlobStoring.Azure.csproj" />
 		<ProjectReference Include="..\Abp.BlobStoring.Tests\Abp.BlobStoring.Tests.csproj" />
 		<ProjectReference Include="..\Abp.Tests\Abp.Tests.csproj" />
 	</ItemGroup>

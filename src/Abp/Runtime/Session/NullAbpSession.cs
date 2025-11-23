@@ -2,13 +2,11 @@
 using Abp.MultiTenancy;
 using Abp.Runtime.Remoting;
 
-namespace Abp.Runtime.Session
-{
+namespace Abp.Runtime.Session {
     /// <summary>
     /// Implements null object pattern for <see cref="IAbpSession"/>.
     /// </summary>
-    public class NullAbpSession : AbpSessionBase
-    {
+    public class NullAbpSession : AbpSessionBase {
         /// <summary>
         /// Singleton instance.
         /// </summary>
@@ -26,13 +24,11 @@ namespace Abp.Runtime.Session
 
         public override int? ImpersonatorTenantId => null;
 
-        private NullAbpSession() 
+        private NullAbpSession()
             : base(
-                  new MultiTenancyConfig(), 
-                  new DataContextAmbientScopeProvider<SessionOverride>(new AsyncLocalAmbientDataContext())
-            )
-        {
-
+                new MultiTenancyConfig(),
+                new DataContextAmbientScopeProvider<SessionOverride>(new AsyncLocalAmbientDataContext(), null)
+            ) {
         }
     }
 }

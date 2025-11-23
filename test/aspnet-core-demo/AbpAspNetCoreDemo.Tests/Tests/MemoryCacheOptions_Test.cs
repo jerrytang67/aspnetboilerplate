@@ -11,19 +11,16 @@ using Xunit;
 
 namespace AbpAspNetCoreDemo.IntegrationTests.Tests;
 
-public class MemoryCacheOptions_Test : IClassFixture<WebApplicationFactory<Startup>>
-{
+public class MemoryCacheOptions_Test : IClassFixture<WebApplicationFactory<Startup>> {
     private readonly WebApplicationFactory<Startup> _applicationFactory;
 
-    public MemoryCacheOptions_Test()
-    {
+    public MemoryCacheOptions_Test() {
         _applicationFactory = new WebApplicationFactory<Startup>();
         _applicationFactory.CreateClient();
     }
 
     [Fact]
-    public void MemoryCacheOption_Size_Test()
-    {
+    public void MemoryCacheOption_Size_Test() {
         var memoryCacheManager = _applicationFactory.Services.GetService(typeof(ICacheManager)) as ICacheManager;
 
         memoryCacheManager.ShouldNotBeNull();
@@ -41,10 +38,9 @@ public class MemoryCacheOptions_Test : IClassFixture<WebApplicationFactory<Start
     }
 
     [Fact]
-    public void MemoryCacheOption_SizeLimit_Test()
-    {
-        new AbpMemoryCache("test", new MemoryCacheOptions
-        {
+    public void MemoryCacheOption_SizeLimit_Test() {
+        var iocManager = _applicationFactory.Services.GetService(typeof(IIocManager)) as IIocManager;
+        new AbpMemoryCache("test", iocManager, new MemoryCacheOptions {
             SizeLimit = 256,
         }).Set("test", "test");
     }

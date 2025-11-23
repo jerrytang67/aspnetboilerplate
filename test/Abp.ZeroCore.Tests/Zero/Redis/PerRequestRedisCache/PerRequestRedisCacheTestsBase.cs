@@ -1,8 +1,9 @@
 using System.Collections.Generic;
+using Abp.Dependency;
 using Abp.Modules;
 using Abp.Runtime.Caching.Redis;
 using Abp.TestBase;
-using Castle.MicroKernel.Registration;
+using Autofac;
 using Microsoft.AspNetCore.Http;
 using NSubstitute;
 using StackExchange.Redis;
@@ -25,7 +26,10 @@ where TStartupModule : AbpModule
         var redisDatabaseProvider = Substitute.For<IAbpRedisCacheDatabaseProvider>();
         redisDatabaseProvider.GetDatabase().Returns(RedisDatabase);
 
-        LocalIocManager.IocContainer.Register(Component.For<IAbpRedisCacheDatabaseProvider>().Instance(redisDatabaseProvider).LifestyleSingleton().IsDefault());
+        var iocMgr = (IocManager)LocalIocManager;
+        iocMgr.Builder.RegisterInstance(redisDatabaseProvider)
+            .As<IAbpRedisCacheDatabaseProvider>()
+            .SingleInstance();
     }
 
     protected PerRequestRedisCacheTestsBase()
@@ -33,7 +37,10 @@ where TStartupModule : AbpModule
         var httpContextAccessor = Substitute.For<IHttpContextAccessor>();
         httpContextAccessor.HttpContext.Returns(info => CurrentHttpContext);
 
-        LocalIocManager.IocContainer.Register(Component.For<IHttpContextAccessor>().Instance(httpContextAccessor).LifestyleSingleton().IsDefault());
+        var iocMgr = (IocManager)LocalIocManager;
+        iocMgr.Builder.RegisterInstance(httpContextAccessor)
+            .As<IHttpContextAccessor>()
+            .SingleInstance();
 
         RedisSerializer = LocalIocManager.Resolve<IRedisCacheSerializer>();
     }

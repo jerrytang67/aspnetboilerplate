@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 using Abp.Application.Features;
 using Abp.Authorization;
 using Abp.Configuration;
@@ -11,8 +12,9 @@ using Abp.Localization.Sources;
 using Abp.ObjectMapping;
 using Abp.Runtime.Session;
 using Abp.Web.Mvc.Alerts;
-using Castle.Core.Logging;
+using Abp.Logging;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Abp.AspNetCore.Mvc.Controllers;
 
@@ -24,7 +26,13 @@ public abstract class AbpController : Controller, ITransientDependency
     /// <summary>
     /// Gets current session information.
     /// </summary>
-    public IAbpSession AbpSession { get; set; }
+    private IAbpSession _abpSession;
+
+    public IAbpSession AbpSession
+    {
+        get => _abpSession ??= LazyGetService(NullAbpSession.Instance);
+        set => _abpSession = value;
+    }
 
     /// <summary>
     /// Gets the event bus.
@@ -59,12 +67,24 @@ public abstract class AbpController : Controller, ITransientDependency
     /// <summary>
     /// Reference to the object to object mapper.
     /// </summary>
-    public IObjectMapper ObjectMapper { get; set; }
+    private IObjectMapper _objectMapper;
+
+    public IObjectMapper ObjectMapper
+    {
+        get => _objectMapper ??= LazyGetService(NullObjectMapper.Instance);
+        set => _objectMapper = value;
+    }
 
     /// <summary>
     /// Reference to the localization manager.
     /// </summary>
-    public ILocalizationManager LocalizationManager { protected get; set; }
+    private ILocalizationManager _localizationManager;
+
+    public ILocalizationManager LocalizationManager
+    {
+        protected get => _localizationManager ??= LazyGetService(NullLocalizationManager.Instance);
+        set => _localizationManager = value;
+    }
 
     /// <summary>
     /// Gets/sets name of the localization source that is used in this application service.
@@ -99,7 +119,18 @@ public abstract class AbpController : Controller, ITransientDependency
     /// <summary>
     /// Reference to the logger to write logs.
     /// </summary>
-    public ILogger Logger { get; set; }
+    private ILogger _logger;
+
+    public ILogger Logger
+    {
+        get => _logger ??= LazyGetService(
+            HttpContext?.RequestServices
+                ?.GetService<ILoggerFactory>()
+                ?.CreateLogger(GetType().FullName ?? nameof(AbpController))
+            ?? NullLogger.Instance
+        );
+        set => _logger = value;
+    }
 
     /// <summary>
     /// Reference to <see cref="IUnitOfWorkManager"/>.
@@ -118,7 +149,13 @@ public abstract class AbpController : Controller, ITransientDependency
         set { _unitOfWorkManager = value; }
     }
 
-    public IAlertManager AlertManager { get; set; }
+    private IAlertManager _alertManager;
+
+    public IAlertManager AlertManager
+    {
+        get => _alertManager ??= LazyGetRequiredService<IAlertManager>();
+        set => _alertManager = value;
+    }
 
     public AlertList Alerts => AlertManager.Alerts;
 
@@ -128,6 +165,26 @@ public abstract class AbpController : Controller, ITransientDependency
     /// Gets current unit of work.
     /// </summary>
     protected IActiveUnitOfWork CurrentUnitOfWork { get { return UnitOfWorkManager.Current; } }
+
+    protected T LazyGetRequiredService<T>()
+    {
+        if (HttpContext?.RequestServices == null)
+        {
+            throw new AbpException($"HttpContext.RequestServices is not available to resolve {typeof(T).FullName}.");
+        }
+
+        return HttpContext.RequestServices.GetRequiredService<T>();
+    }
+
+    protected T LazyGetService<T>(T defaultValue)
+    {
+        if (HttpContext?.RequestServices == null)
+        {
+            return defaultValue;
+        }
+
+        return HttpContext.RequestServices.GetService<T>() ?? defaultValue;
+    }
 
     /// <summary>
     /// Constructor.

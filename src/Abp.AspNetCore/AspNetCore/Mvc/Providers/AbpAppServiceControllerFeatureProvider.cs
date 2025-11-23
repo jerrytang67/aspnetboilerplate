@@ -1,3 +1,4 @@
+using System;
 using System.Linq;
 using System.Reflection;
 using Abp.Application.Services;
@@ -38,7 +39,25 @@ public class AbpAppServiceControllerFeatureProvider : ControllerFeatureProvider
             return false;
         }
 
-        var settings = _iocResolver.Resolve<AbpAspNetCoreConfiguration>().ControllerAssemblySettings.GetSettings(type);
-        return settings.Any(setting => setting.TypePredicate(type));
+        try
+        {
+            Console.WriteLine($"[IsController] Checking type: {type.FullName}");
+            var config = _iocResolver.Resolve<AbpAspNetCoreConfiguration>();
+            Console.WriteLine($"[IsController] Config resolved: {config != null}");
+            Console.WriteLine($"[IsController] ControllerAssemblySettings count: {config?.ControllerAssemblySettings?.Count ?? 0}");
+            
+            var settings = config.ControllerAssemblySettings.GetSettings(type);
+            Console.WriteLine($"[IsController] Settings found for type: {settings?.Count ?? 0}");
+            
+            var result = settings.Any(setting => setting.TypePredicate(type));
+            Console.WriteLine($"[IsController] Result: {result}");
+            return result;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[IsController] Exception: {ex.GetType().Name} - {ex.Message}");
+            Console.WriteLine($"[IsController] StackTrace: {ex.StackTrace}");
+            return false;
+        }
     }
 }

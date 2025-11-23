@@ -12,21 +12,24 @@ using Abp.FluentValidation;
 using Abp.Localization;
 using Abp.MultiTenancy;
 using Abp.Reflection.Extensions;
+using Autofac;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Abp.AspNetCore.App;
 
 [DependsOn(typeof(AbpAspNetCoreTestBaseModule), typeof(AbpFluentValidationModule))]
-public class AppModule : AbpModule
-{
-    public override void PreInitialize()
-    {
-        Configuration.Auditing.IsEnabledForAnonymousUsers = true;
+public class AppModule : AbpModule {
+    public override void ConfigureServices() {
+
 
         Configuration.ReplaceService<IAuditingStore, MockAuditingStore>();
         Configuration.ReplaceService<ITenantStore, TestTenantStore>();
         Configuration.ReplaceService<ISettingStore, MockSettingStore>();
+
+        IocManager.RegisterAssemblyByConvention(typeof(AppModule).GetAssembly());
+
+        Configuration.Modules.AbpAspNetCore().DefaultResponseCacheAttributeForAppServices = new ResponseCacheAttribute() { NoStore = true, Location = ResponseCacheLocation.None };
 
         Configuration
             .Modules.AbpAspNetCore()
@@ -34,29 +37,21 @@ public class AppModule : AbpModule
                 typeof(AppModule).GetAssembly()
             );
 
-        Configuration.Modules.AbpAspNetCore().DefaultResponseCacheAttributeForAppServices = new ResponseCacheAttribute() { NoStore = true, Location = ResponseCacheLocation.None };
+        Configuration.Auditing.IsEnabledForAnonymousUsers = true;
+        Configuration.Modules.AbpWebCommon().WrapResultFilters.Add(new CustomWrapResultFilter());
+    }
 
-        Configuration.IocManager.Resolve<IAbpAspNetCoreConfiguration>().EndpointConfiguration.Add(endpoints =>
-        {
+    public override void Initialize() {
+
+        var localizationConfiguration = IocManager.IocContainer.Resolve<ILocalizationConfiguration>();
+        localizationConfiguration.Languages.Add(new LanguageInfo("en-US", "English", isDefault: true));
+        localizationConfiguration.Languages.Add(new LanguageInfo("it", "Italian"));
+        Configuration.IocManager.Resolve<IAbpAspNetCoreConfiguration>().EndpointConfiguration.Add(endpoints => {
             endpoints.MapControllerRoute("defaultWithArea", "{area}/{controller=Home}/{action=Index}/{id?}");
             endpoints.MapControllerRoute("default", "{controller=Home}/{action=Index}/{id?}");
             endpoints.MapRazorPages();
         });
 
-        Configuration.Modules.AbpWebCommon().WrapResultFilters.Add(new CustomWrapResultFilter());
-        
         AbpLocalizationHeaderRequestCultureProvider.HeaderName = "X-AspNetCore-Culture";
-    }
-
-    public override void Initialize()
-    {
-        IocManager.RegisterAssemblyByConvention(typeof(AppModule).GetAssembly());
-    }
-
-    public override void PostInitialize()
-    {
-        var localizationConfiguration = IocManager.IocContainer.Resolve<ILocalizationConfiguration>();
-        localizationConfiguration.Languages.Add(new LanguageInfo("en-US", "English", isDefault: true));
-        localizationConfiguration.Languages.Add(new LanguageInfo("it", "Italian"));
     }
 }

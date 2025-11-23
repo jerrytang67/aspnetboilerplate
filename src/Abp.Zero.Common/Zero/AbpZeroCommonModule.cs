@@ -15,7 +15,6 @@ using Abp.MultiTenancy;
 using Abp.Reflection;
 using Abp.Reflection.Extensions;
 using Abp.Zero.Configuration;
-using Castle.MicroKernel.Registration;
 
 namespace Abp.Zero
 {
@@ -25,8 +24,11 @@ namespace Abp.Zero
     [DependsOn(typeof(AbpKernelModule))]
     public class AbpZeroCommonModule : AbpModule
     {
-        public override void PreInitialize()
+        public override void ConfigureServices()
         {
+            IocManager.RegisterAssemblyByConvention(typeof(AbpZeroCommonModule).GetAssembly());
+
+            // Register core Zero services - must happen before container build
             IocManager.RegisterIfNot<IAbpZeroEntityTypes, AbpZeroEntityTypes>(); //Registered on services.AddAbpIdentity() for Abp.ZeroCore.
 
             IocManager.Register<IRoleManagementConfig, RoleManagementConfig>();
@@ -34,32 +36,44 @@ namespace Abp.Zero
             IocManager.Register<ILanguageManagementConfig, LanguageManagementConfig>();
             IocManager.Register<IAbpZeroConfig, AbpZeroConfig>();
 
+            // Register assembly by convention
+            IocManager.Register<IMultiTenantLocalizationDictionary, MultiTenantLocalizationDictionary>(DependencyLifeStyle.Transient);
+
+            // Configuration that uses registered services - must happen after ConfigureServices
             Configuration.ReplaceService<ITenantStore, TenantStore>(DependencyLifeStyle.Transient);
 
             Configuration.Settings.Providers.Add<AbpZeroSettingProvider>();
+
+            // TODO: Component registration event hook temporarily disabled during Autofac migration
+            // This was used to auto-register IAbpZeroFeatureValueStore implementations
+            // Need to implement using Autofac's IRegistrationSource or similar mechanism
+            // IocManager.IocContainer.Kernel.ComponentRegistered += Kernel_ComponentRegistered;
+
 
             Configuration.Localization.Sources.Add(
                 new DictionaryBasedLocalizationSource(
                     AbpZeroConsts.LocalizationSourceName,
                     new XmlEmbeddedFileLocalizationDictionaryProvider(
                         typeof(AbpZeroCommonModule).GetAssembly(), "Abp.Zero.Localization.Source"
-                        )));
-
-            IocManager.IocContainer.Kernel.ComponentRegistered += Kernel_ComponentRegistered;
-
+                    )));
             AddIgnoredTypes();
+
         }
 
         public override void Initialize()
         {
+
+
+
+
+            // Fill missing entity types and register tenant cache - requires resolved services
             FillMissingEntityTypes();
-
-            IocManager.Register<IMultiTenantLocalizationDictionary, MultiTenantLocalizationDictionary>(DependencyLifeStyle.Transient);
-            IocManager.RegisterAssemblyByConvention(typeof(AbpZeroCommonModule).GetAssembly());
-
             RegisterTenantCache();
         }
 
+        // TODO: Temporarily disabled during Autofac migration
+        // This event handler needs to be reimplemented using Autofac's IRegistrationSource
+        /*
         private void Kernel_ComponentRegistered(string key, Castle.MicroKernel.IHandler handler)
         {
             if (typeof(IAbpZeroFeatureValueStore).IsAssignableFrom(handler.ComponentModel.Implementation) && !IocManager.IsRegistered<IAbpZeroFeatureValueStore>())
@@ -69,6 +83,7 @@ namespace Abp.Zero
                     );
             }
         }
+        */
 
         private void AddIgnoredTypes()
         {

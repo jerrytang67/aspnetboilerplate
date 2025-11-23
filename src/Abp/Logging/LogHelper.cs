@@ -1,9 +1,10 @@
-﻿using System;
+using System;
 using System.Linq;
+using Microsoft.Extensions.Logging;
 using Abp.Collections.Extensions;
 using Abp.Dependency;
 using Abp.Runtime.Validation;
-using Castle.Core.Logging;
+using Abp.Logging;
 
 namespace Abp.Logging
 {
@@ -21,7 +22,7 @@ namespace Abp.Logging
         static LogHelper()
         {
             Logger = IocManager.Instance.IsRegistered(typeof(ILoggerFactory))
-                ? IocManager.Instance.Resolve<ILoggerFactory>().Create(typeof(LogHelper))
+                ? IocManager.Instance.Resolve<ILoggerFactory>().CreateLogger(typeof(LogHelper))
                 : NullLogger.Instance;
         }
 

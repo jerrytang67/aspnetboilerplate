@@ -4,9 +4,8 @@ using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
 using Abp.Authorization;
-using Abp.Dependency;
 using AbpAspNetCoreDemo.Core.Domain;
-using Castle.MicroKernel.Registration;
+using Autofac;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Newtonsoft.Json;
 using NSubstitute;
@@ -17,30 +16,23 @@ namespace AbpAspNetCoreDemo.IntegrationTests.Tests;
 
 public class AbpODataEntityControllerTests
 {
-    private readonly WebApplicationFactory<Startup> _factory;
+    private readonly CustomWebApplicationFactory<Startup> _factory;
 
     private IPermissionChecker _permissionChecker;
 
     public AbpODataEntityControllerTests()
     {
-        _factory = new WebApplicationFactory<Startup>();
-
-        RegisterFakePermissionChecker();
-    }
-
-    private void RegisterFakePermissionChecker()
-    {
-        Startup.IocManager.Value = new IocManager();
-
         _permissionChecker = Substitute.For<IPermissionChecker>();
         _permissionChecker.IsGrantedAsync(Arg.Any<string>()).Returns(false);
         _permissionChecker.IsGranted(Arg.Any<string>()).Returns(false);
 
-        Startup.IocManager.Value.IocContainer.Register(
-            Component.For<IPermissionChecker>().Instance(
-                _permissionChecker
-            ).IsDefault()
-        );
+        _factory = new CustomWebApplicationFactory<Startup>(builder =>
+        {
+            // Override the permission checker with our mock (denying all permissions)
+            builder.RegisterInstance(_permissionChecker)
+                .As<IPermissionChecker>()
+                .SingleInstance();
+        });
     }
 
     [Fact]

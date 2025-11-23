@@ -1,9 +1,10 @@
 using System;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Localization;
-using Castle.Core.Logging;
+using Abp.Logging;
 
 namespace Abp.AspNetCore.Localization;
 
@@ -12,10 +13,8 @@ namespace Abp.AspNetCore.Localization;
 /// Retrieves <see cref="CookieRequestCultureProvider.DefaultCookieName"/> from request header
 /// Additionally, it allows value without culture prefix
 /// </summary>
-public class AbpLocalizationHeaderRequestCultureProvider : RequestCultureProvider
-{
-    public ILogger Logger { get; set; }
-
+public class AbpLocalizationHeaderRequestCultureProvider : RequestCultureProvider {
+    private readonly ILogger _logger;
     private static readonly char[] Separator = { '|' };
 
     private static readonly string _culturePrefix = "c=";
@@ -27,30 +26,26 @@ public class AbpLocalizationHeaderRequestCultureProvider : RequestCultureProvide
     /// </summary>
     public static string HeaderName { get; set; } = ".AspNetCore.Culture";
 
-    public AbpLocalizationHeaderRequestCultureProvider()
-    {
-        Logger = NullLogger.Instance;
+    public AbpLocalizationHeaderRequestCultureProvider(ILogger logger) {
+        _logger = logger;
     }
 
     /// <inheritdoc />
-    public override Task<ProviderCultureResult> DetermineProviderCultureResult(HttpContext httpContext)
-    {
-        if (httpContext == null)
-        {
+    public override Task<ProviderCultureResult> DetermineProviderCultureResult(HttpContext httpContext) {
+        if (httpContext == null) {
             throw new ArgumentNullException(nameof(httpContext));
         }
 
         var localizationHeader = httpContext.Request.Headers[HeaderName];
 
-        if (localizationHeader.Count == 0)
-        {
+        if (localizationHeader.Count == 0) {
             return Task.FromResult((ProviderCultureResult)null);
         }
 
         var cultureResult = ParseHeaderValue(localizationHeader);
         var culture = cultureResult.Cultures.First().Value;
         var uiCulture = cultureResult.UICultures.First().Value;
-        Logger.DebugFormat("{0} - Using Culture:{1} , UICulture:{2}", nameof(AbpLocalizationHeaderRequestCultureProvider), culture, uiCulture);
+        _logger.LogDebug("{0} - Using Culture:{1} , UICulture:{2}", nameof(AbpLocalizationHeaderRequestCultureProvider), culture, uiCulture);
 
         return Task.FromResult(cultureResult);
     }
@@ -61,30 +56,25 @@ public class AbpLocalizationHeaderRequestCultureProvider : RequestCultureProvide
     /// </summary>
     /// <param name="value">The header value to parse.</param>
     /// <returns>The <see cref="RequestCulture"/> or <c>null</c> if parsing fails.</returns>
-    public static ProviderCultureResult ParseHeaderValue(string value)
-    {
-        if (string.IsNullOrWhiteSpace(value))
-        {
+    public static ProviderCultureResult ParseHeaderValue(string value) {
+        if (string.IsNullOrWhiteSpace(value)) {
             return null;
         }
 
-        if (!value.Contains("|") && !value.Contains("="))
-        {
+        if (!value.Contains("|") && !value.Contains("=")) {
             return new ProviderCultureResult(value, value);
         }
 
         var parts = value.Split(Separator, StringSplitOptions.RemoveEmptyEntries);
 
-        if (parts.Length != 2)
-        {
+        if (parts.Length != 2) {
             return null;
         }
 
         var potentialCultureName = parts[0];
         var potentialUICultureName = parts[1];
 
-        if (!potentialCultureName.StartsWith(_culturePrefix) || !potentialUICultureName.StartsWith(_uiCulturePrefix))
-        {
+        if (!potentialCultureName.StartsWith(_culturePrefix) || !potentialUICultureName.StartsWith(_uiCulturePrefix)) {
             return null;
         }
 
@@ -93,20 +83,17 @@ public class AbpLocalizationHeaderRequestCultureProvider : RequestCultureProvide
         var isEmptyCulture = string.IsNullOrWhiteSpace(cultureName);
         var isEmptyUICulture = string.IsNullOrWhiteSpace(uiCultureName);
 
-        if (isEmptyCulture && isEmptyUICulture)
-        {
+        if (isEmptyCulture && isEmptyUICulture) {
             // No values specified for either so no match
             return null;
         }
 
-        if (!isEmptyCulture && isEmptyUICulture)
-        {
+        if (!isEmptyCulture && isEmptyUICulture) {
             // Value for culture but not for UI culture so default to culture value for both
             uiCultureName = cultureName;
         }
 
-        if (isEmptyCulture && !isEmptyUICulture)
-        {
+        if (isEmptyCulture && !isEmptyUICulture) {
             // Value for UI culture but not for culture so default to UI culture value for both
             cultureName = uiCultureName;
         }

@@ -48,6 +48,9 @@ namespace Abp.TestBase
 
             PreInitialize();
 
+            // Build the container before calling Initialize
+            ((IocManager)LocalIocManager).BuildContainer();
+
             AbpBootstrapper.Initialize();
 
             PostInitialize();

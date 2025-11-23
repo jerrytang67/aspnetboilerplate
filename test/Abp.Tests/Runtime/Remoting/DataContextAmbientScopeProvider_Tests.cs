@@ -3,27 +3,22 @@ using Abp.Runtime.Remoting;
 using Shouldly;
 using Xunit;
 
-namespace Abp.Tests.Runtime.Remoting
-{
-    public class DataContextAmbientScopeProvider_Tests
-    {
+namespace Abp.Tests.Runtime.Remoting {
+    public class DataContextAmbientScopeProvider_Tests {
         private const string ContextKey = "Abp.Tests.TestData";
 
         [Fact]
-        public void Test_Sync()
-        {
+        public void Test_Sync() {
             var scopeAccessor = new DataContextAmbientScopeProvider<TestData>(
-                new AsyncLocalAmbientDataContext()
+                new AsyncLocalAmbientDataContext(), null
             );
 
             scopeAccessor.GetValue(ContextKey).ShouldBeNull();
 
-            using (scopeAccessor.BeginScope(ContextKey, new TestData(42)))
-            {
+            using (scopeAccessor.BeginScope(ContextKey, new TestData(42))) {
                 scopeAccessor.GetValue(ContextKey).Number.ShouldBe(42);
 
-                using (scopeAccessor.BeginScope(ContextKey, new TestData(24)))
-                {
+                using (scopeAccessor.BeginScope(ContextKey, new TestData(24))) {
                     scopeAccessor.GetValue(ContextKey).Number.ShouldBe(24);
                 }
 
@@ -34,24 +29,21 @@ namespace Abp.Tests.Runtime.Remoting
         }
 
         [Fact]
-        public async Task Test_Async()
-        {
+        public async Task Test_Async() {
             var scopeAccessor = new DataContextAmbientScopeProvider<TestData>(
-                new AsyncLocalAmbientDataContext()
+                new AsyncLocalAmbientDataContext(), null
             );
 
             scopeAccessor.GetValue(ContextKey).ShouldBeNull();
 
             await Task.Delay(1);
 
-            using (scopeAccessor.BeginScope(ContextKey, new TestData(42)))
-            {
+            using (scopeAccessor.BeginScope(ContextKey, new TestData(42))) {
                 await Task.Delay(1);
 
                 scopeAccessor.GetValue(ContextKey).Number.ShouldBe(42);
 
-                using (scopeAccessor.BeginScope(ContextKey, new TestData(24)))
-                {
+                using (scopeAccessor.BeginScope(ContextKey, new TestData(24))) {
                     await Task.Delay(1);
 
                     scopeAccessor.GetValue(ContextKey).Number.ShouldBe(24);
@@ -68,10 +60,8 @@ namespace Abp.Tests.Runtime.Remoting
         }
 
 
-        public class TestData
-        {
-            public TestData(int number)
-            {
+        public class TestData {
+            public TestData(int number) {
                 Number = number;
             }
 

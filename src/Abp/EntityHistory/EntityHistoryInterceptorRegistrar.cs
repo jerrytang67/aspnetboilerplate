@@ -3,7 +3,6 @@ using System.Linq;
 using System.Reflection;
 using Abp.Dependency;
 using Abp.Domain.Uow;
-using Castle.Core;
 
 namespace Abp.EntityHistory
 {
@@ -11,20 +10,9 @@ namespace Abp.EntityHistory
     {
         public static void Initialize(IIocManager iocManager)
         {
-            iocManager.IocContainer.Kernel.ComponentRegistered += (key, handler) =>
-            {
-                if (!iocManager.IsRegistered<IEntityHistoryConfiguration>())
-                {
-                    return;
-                }
-
-                var entityHistoryConfiguration = iocManager.Resolve<IEntityHistoryConfiguration>();
-
-                if (ShouldIntercept(entityHistoryConfiguration, handler.ComponentModel.Implementation))
-                {
-                    handler.ComponentModel.Interceptors.Add(new InterceptorReference(typeof(AbpAsyncDeterminationInterceptor<EntityHistoryInterceptor>)));
-                }
-            };
+            // Note: Interceptors are now automatically applied via BasicConventionalRegistrar
+            // using Autofac.Extras.DynamicProxy's EnableInterfaceInterceptors
+            // This method is kept for backwards compatibility but does nothing
         }
         
         private static bool ShouldIntercept(IEntityHistoryConfiguration entityHistoryConfiguration, Type type)

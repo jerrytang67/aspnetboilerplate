@@ -1,8 +1,8 @@
-﻿using System;
+using System;
 using System.IO;
 using System.Xml;
+using Microsoft.Extensions.Logging;
 using Abp.Reflection.Extensions;
-using Castle.Core.Logging;
 using log4net;
 using log4net.Config;
 using log4net.Repository;

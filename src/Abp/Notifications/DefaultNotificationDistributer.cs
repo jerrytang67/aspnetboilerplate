@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 using Abp.Collections.Extensions;
 using Abp.Configuration;
 using Abp.Dependency;
@@ -9,19 +10,19 @@ using Abp.Domain.Services;
 using Abp.Domain.Uow;
 using Abp.Extensions;
 
-namespace Abp.Notifications
-{
+namespace Abp.Notifications {
     /// <summary>
     /// Used to distribute notifications to users.
     /// </summary>
-    public class DefaultNotificationDistributer : DomainService, INotificationDistributer
-    {
+    public class DefaultNotificationDistributer : DomainService, INotificationDistributer {
         private readonly INotificationConfiguration _notificationConfiguration;
         private readonly INotificationDefinitionManager _notificationDefinitionManager;
         private readonly INotificationStore _notificationStore;
         private readonly IUnitOfWorkManager _unitOfWorkManager;
         private readonly IGuidGenerator _guidGenerator;
         private readonly IIocResolver _iocResolver;
+        private readonly ILogger<DefaultNotificationDistributer> _logger;
+
 
         /// <summary>
         /// Initializes a new instance of the <see cref="NotificationDistributionJob"/> class.
@@ -32,24 +33,22 @@ namespace Abp.Notifications
             INotificationStore notificationStore,
             IUnitOfWorkManager unitOfWorkManager,
             IGuidGenerator guidGenerator,
-            IIocResolver iocResolver)
-        {
+            IIocResolver iocResolver,
+            ILogger<DefaultNotificationDistributer> logger) {
             _notificationConfiguration = notificationConfiguration;
             _notificationDefinitionManager = notificationDefinitionManager;
             _notificationStore = notificationStore;
             _unitOfWorkManager = unitOfWorkManager;
             _guidGenerator = guidGenerator;
             _iocResolver = iocResolver;
+            _logger = logger;
         }
 
-        public virtual async Task DistributeAsync(Guid notificationId)
-        {
-            await _unitOfWorkManager.WithUnitOfWorkAsync(async () =>
-            {
+        public virtual async Task DistributeAsync(Guid notificationId) {
+            await _unitOfWorkManager.WithUnitOfWorkAsync(async () => {
                 var notificationInfo = await _notificationStore.GetNotificationOrNullAsync(notificationId);
-                if (notificationInfo == null)
-                {
-                    Logger.Warn(
+                if (notificationInfo == null) {
+                    _logger.LogWarning(
                         "NotificationDistributionJob can not continue since could not found notification by id: " +
                         notificationId
                     );
@@ -67,37 +66,33 @@ namespace Abp.Notifications
             });
         }
 
-        protected virtual async Task<UserIdentifier[]> GetUsersAsync(NotificationInfo notificationInfo)
-        {
+        protected virtual async Task<UserIdentifier[]> GetUsersAsync(NotificationInfo notificationInfo) {
             List<UserIdentifier> userIds;
 
-            if (!notificationInfo.UserIds.IsNullOrEmpty())
-            {
+            if (!notificationInfo.UserIds.IsNullOrEmpty()) {
                 // Directly get from UserIds
                 userIds = (await notificationInfo
-                    .UserIds
-                    .Split(",")
-                    .Select(UserIdentifier.Parse)
-                    .WhereAsync(async (uid) => {
-                        try
-                        {
-                            return await SettingManager.GetSettingValueForUserAsync<bool>(NotificationSettingNames.ReceiveNotifications, uid.TenantId, uid.UserId);
-                        } catch(Exception ex) {
-                            Logger.WarnFormat(ex, "Unable to determine notification delivery settings for user ({0}).", uid);
-                            return false;
-                        }
-                    }))
+                        .UserIds
+                        .Split(",")
+                        .Select(UserIdentifier.Parse)
+                        .WhereAsync(async (uid) => {
+                            try {
+                                return await SettingManager.GetSettingValueForUserAsync<bool>(NotificationSettingNames.ReceiveNotifications, uid.TenantId, uid.UserId);
+                            }
+                            catch (Exception ex) {
+                                _logger.LogWarning(ex, "Unable to determine notification delivery settings for user ({0}).", uid);
+                                return false;
+                            }
+                        }))
                     .ToList();
             }
-            else
-            {
+            else {
                 var tenantIds = GetTenantIds(notificationInfo);
 
                 List<NotificationSubscriptionInfo> subscriptions;
 
                 if (tenantIds.IsNullOrEmpty() ||
-                    (tenantIds.Length == 1 && tenantIds[0] == NotificationInfo.AllTenantIds.To<int>()))
-                {
+                    (tenantIds.Length == 1 && tenantIds[0] == NotificationInfo.AllTenantIds.To<int>())) {
                     // Get all subscribed users of all tenants
                     subscriptions = await _notificationStore.GetSubscriptionsAsync(
                         notificationInfo.NotificationName,
@@ -106,8 +101,7 @@ namespace Abp.Notifications
                         notificationInfo.TargetNotifiers
                     );
                 }
-                else
-                {
+                else {
                     // Get all subscribed users of specified tenant(s)
                     subscriptions = await _notificationStore.GetSubscriptionsAsync(
                         tenantIds,
@@ -122,15 +116,12 @@ namespace Abp.Notifications
                 var invalidSubscriptions = new Dictionary<Guid, NotificationSubscriptionInfo>();
 
                 // TODO: Group subscriptions per tenant for potential performance improvement
-                foreach (var subscription in subscriptions)
-                {
-                    using (CurrentUnitOfWork.SetTenantId(subscription.TenantId))
-                    {
+                foreach (var subscription in subscriptions) {
+                    using (CurrentUnitOfWork.SetTenantId(subscription.TenantId)) {
                         if (!await _notificationDefinitionManager.IsAvailableAsync(notificationInfo.NotificationName,
                                 new UserIdentifier(subscription.TenantId, subscription.UserId)) ||
                             !SettingManager.GetSettingValueForUser<bool>(NotificationSettingNames.ReceiveNotifications,
-                                subscription.TenantId, subscription.UserId))
-                        {
+                                subscription.TenantId, subscription.UserId)) {
                             invalidSubscriptions[subscription.Id] = subscription;
                         }
                     }
@@ -144,8 +135,7 @@ namespace Abp.Notifications
                     .ToList();
             }
 
-            if (!notificationInfo.ExcludedUserIds.IsNullOrEmpty())
-            {
+            if (!notificationInfo.ExcludedUserIds.IsNullOrEmpty()) {
                 //Exclude specified users.
                 var excludedUserIds = notificationInfo
                     .ExcludedUserIds
@@ -159,34 +149,28 @@ namespace Abp.Notifications
             return userIds.ToArray();
         }
 
-        protected virtual UserIdentifier[] GetUsers(NotificationInfo notificationInfo)
-        {
-            return _unitOfWorkManager.WithUnitOfWork(() =>
-            {
+        protected virtual UserIdentifier[] GetUsers(NotificationInfo notificationInfo) {
+            return _unitOfWorkManager.WithUnitOfWork(() => {
                 List<UserIdentifier> userIds;
 
-                if (!notificationInfo.UserIds.IsNullOrEmpty())
-                {
+                if (!notificationInfo.UserIds.IsNullOrEmpty()) {
                     //Directly get from UserIds
                     userIds = notificationInfo
                         .UserIds
                         .Split(",")
                         .Select(uidAsStr => UserIdentifier.Parse(uidAsStr))
                         .Where((uid) => {
-                            try
-                            {
+                            try {
                                 return SettingManager.GetSettingValueForUser<bool>(NotificationSettingNames.ReceiveNotifications, uid.TenantId, uid.UserId);
                             }
-                            catch (Exception ex)
-                            {
-                                Logger.WarnFormat(ex, "Unable to determine notification delivery settings for user ({0}).", uid);
+                            catch (Exception ex) {
+                                _logger.LogWarning(ex, "Unable to determine notification delivery settings for user ({0}).", uid);
                                 return false;
                             }
                         })
                         .ToList();
                 }
-                else
-                {
+                else {
                     //Get subscribed users
 
                     var tenantIds = GetTenantIds(notificationInfo);
@@ -194,8 +178,7 @@ namespace Abp.Notifications
                     List<NotificationSubscriptionInfo> subscriptions;
 
                     if (tenantIds.IsNullOrEmpty() ||
-                        (tenantIds.Length == 1 && tenantIds[0] == NotificationInfo.AllTenantIds.To<int>()))
-                    {
+                        (tenantIds.Length == 1 && tenantIds[0] == NotificationInfo.AllTenantIds.To<int>())) {
                         //Get all subscribed users of all tenants
                         subscriptions = _notificationStore.GetSubscriptions(
                             notificationInfo.NotificationName,
@@ -204,8 +187,7 @@ namespace Abp.Notifications
                             notificationInfo.TargetNotifiers
                         );
                     }
-                    else
-                    {
+                    else {
                         //Get all subscribed users of specified tenant(s)
                         subscriptions = _notificationStore.GetSubscriptions(
                             tenantIds,
@@ -220,16 +202,13 @@ namespace Abp.Notifications
                     var invalidSubscriptions = new Dictionary<Guid, NotificationSubscriptionInfo>();
 
                     //TODO: Group subscriptions per tenant for potential performance improvement
-                    foreach (var subscription in subscriptions)
-                    {
-                        using (CurrentUnitOfWork.SetTenantId(subscription.TenantId))
-                        {
+                    foreach (var subscription in subscriptions) {
+                        using (CurrentUnitOfWork.SetTenantId(subscription.TenantId)) {
                             if (!_notificationDefinitionManager.IsAvailable(notificationInfo.NotificationName,
                                     new UserIdentifier(subscription.TenantId, subscription.UserId)) ||
                                 !SettingManager.GetSettingValueForUser<bool>(
                                     NotificationSettingNames.ReceiveNotifications, subscription.TenantId,
-                                    subscription.UserId))
-                            {
+                                    subscription.UserId)) {
                                 invalidSubscriptions[subscription.Id] = subscription;
                             }
                         }
@@ -243,8 +222,7 @@ namespace Abp.Notifications
                         .ToList();
                 }
 
-                if (!notificationInfo.ExcludedUserIds.IsNullOrEmpty())
-                {
+                if (!notificationInfo.ExcludedUserIds.IsNullOrEmpty()) {
                     //Exclude specified users.
                     var excludedUserIds = notificationInfo
                         .ExcludedUserIds
@@ -259,33 +237,27 @@ namespace Abp.Notifications
             });
         }
 
-        private static int?[] GetTenantIds(NotificationInfo notificationInfo)
-        {
-            if (notificationInfo.TenantIds.IsNullOrEmpty())
-            {
+        private static int?[] GetTenantIds(NotificationInfo notificationInfo) {
+            if (notificationInfo.TenantIds.IsNullOrEmpty()) {
                 return null;
             }
 
             return notificationInfo
                 .TenantIds
                 .Split(",")
-                .Select(tenantIdAsStr => tenantIdAsStr == "null" ? (int?) null : (int?) tenantIdAsStr.To<int>())
+                .Select(tenantIdAsStr => tenantIdAsStr == "null" ? (int?)null : (int?)tenantIdAsStr.To<int>())
                 .ToArray();
         }
 
         protected virtual async Task<List<UserNotification>> SaveUserNotificationsAsync(
             UserIdentifier[] users,
-            NotificationInfo notificationInfo)
-        {
-            return await _unitOfWorkManager.WithUnitOfWorkAsync(async () =>
-            {
+            NotificationInfo notificationInfo) {
+            return await _unitOfWorkManager.WithUnitOfWorkAsync(async () => {
                 var userNotifications = new List<UserNotification>();
 
                 var tenantGroups = users.GroupBy(user => user.TenantId);
-                foreach (var tenantGroup in tenantGroups)
-                {
-                    using (_unitOfWorkManager.Current.SetTenantId(tenantGroup.Key))
-                    {
+                foreach (var tenantGroup in tenantGroups) {
+                    using (_unitOfWorkManager.Current.SetTenantId(tenantGroup.Key)) {
                         var tenantNotificationInfo = new TenantNotificationInfo(
                             _guidGenerator.Create(),
                             tenantGroup.Key,
@@ -304,10 +276,8 @@ namespace Abp.Notifications
                             null
                         );
 
-                        foreach (var user in tenantGroup)
-                        {
-                            var userNotification = new UserNotificationInfo(_guidGenerator.Create())
-                            {
+                        foreach (var user in tenantGroup) {
+                            var userNotification = new UserNotificationInfo(_guidGenerator.Create()) {
                                 TenantId = tenantGroup.Key,
                                 UserId = user.UserId,
                                 TenantNotificationId = tenantNotificationInfo.Id,
@@ -334,16 +304,13 @@ namespace Abp.Notifications
             UserIdentifier user,
             NotificationInfo notificationInfo,
             List<NotificationSubscriptionInfo> userNotificationSubscriptions
-        )
-        {
-            if (userNotificationSubscriptions.IsNullOrEmpty())
-            {
+        ) {
+            if (userNotificationSubscriptions.IsNullOrEmpty()) {
                 return notificationInfo.TargetNotifiers;
             }
 
             var userSubscription = userNotificationSubscriptions.FirstOrDefault(un => un.UserId == user.UserId);
-            if (userSubscription == null)
-            {
+            if (userSubscription == null) {
                 return notificationInfo.TargetNotifiers;
             }
 
@@ -352,17 +319,13 @@ namespace Abp.Notifications
 
         protected virtual List<UserNotification> SaveUserNotifications(
             UserIdentifier[] users,
-            NotificationInfo notificationInfo)
-        {
-            return _unitOfWorkManager.WithUnitOfWork(() =>
-            {
+            NotificationInfo notificationInfo) {
+            return _unitOfWorkManager.WithUnitOfWork(() => {
                 var userNotifications = new List<UserNotification>();
 
                 var tenantGroups = users.GroupBy(user => user.TenantId);
-                foreach (var tenantGroup in tenantGroups)
-                {
-                    using (_unitOfWorkManager.Current.SetTenantId(tenantGroup.Key))
-                    {
+                foreach (var tenantGroup in tenantGroups) {
+                    using (_unitOfWorkManager.Current.SetTenantId(tenantGroup.Key)) {
                         var tenantNotificationInfo = new TenantNotificationInfo(_guidGenerator.Create(),
                             tenantGroup.Key, notificationInfo);
                         _notificationStore.InsertTenantNotification(tenantNotificationInfo);
@@ -370,10 +333,8 @@ namespace Abp.Notifications
 
                         var tenantNotification = tenantNotificationInfo.ToTenantNotification();
 
-                        foreach (var user in tenantGroup)
-                        {
-                            var userNotification = new UserNotificationInfo(_guidGenerator.Create())
-                            {
+                        foreach (var user in tenantGroup) {
+                            var userNotification = new UserNotificationInfo(_guidGenerator.Create()) {
                                 TenantId = tenantGroup.Key,
                                 UserId = user.UserId,
                                 TenantNotificationId = tenantNotificationInfo.Id
@@ -393,26 +354,20 @@ namespace Abp.Notifications
 
         #region Protected methods
 
-        protected virtual async Task NotifyAsync(UserNotification[] userNotifications)
-        {
-            foreach (var notifierType in _notificationConfiguration.Notifiers)
-            {
-                try
-                {
-                    using (var notifier = _iocResolver.ResolveAsDisposable<IRealTimeNotifier>(notifierType))
-                    {
+        protected virtual async Task NotifyAsync(UserNotification[] userNotifications) {
+            foreach (var notifierType in _notificationConfiguration.Notifiers) {
+                try {
+                    using (var notifier = _iocResolver.ResolveAsDisposable<IRealTimeNotifier>(notifierType)) {
                         UserNotification[] notificationsToSendWithThatNotifier;
 
                         // if UseOnlyIfRequestedAsTarget is true, then we should send notifications which requests this notifier
-                        if (notifier.Object.UseOnlyIfRequestedAsTarget)
-                        {
+                        if (notifier.Object.UseOnlyIfRequestedAsTarget) {
                             notificationsToSendWithThatNotifier = userNotifications
                                 .Where(n => n.TargetNotifiersList.Contains(notifierType.FullName))
                                 .ToArray();
                         }
-                        else
-                        {
-                            // notifier allows to send any notifications 
+                        else {
+                            // notifier allows to send any notifications
                             // we can send all notifications which does not have TargetNotifiersList(since there is no target, we can send it with any notifier)
                             // or current notifier is in TargetNotifiersList
 
@@ -427,17 +382,15 @@ namespace Abp.Notifications
                                 .ToArray();
                         }
 
-                        if (notificationsToSendWithThatNotifier.Length == 0)
-                        {
+                        if (notificationsToSendWithThatNotifier.Length == 0) {
                             continue;
                         }
 
                         await notifier.Object.SendNotificationsAsync(notificationsToSendWithThatNotifier);
                     }
                 }
-                catch (Exception ex)
-                {
-                    Logger.Warn(ex.ToString(), ex);
+                catch (Exception ex) {
+                    _logger.LogWarning(ex.ToString(), ex);
                 }
             }
         }
@@ -446,14 +399,12 @@ namespace Abp.Notifications
     }
 }
 
-static class AsyncWhereExtension
-{
+static class AsyncWhereExtension {
     // Allows the use of an async predicate
     public static async Task<IEnumerable<T>> WhereAsync<T>(
-            this IEnumerable<T> source,
-            Func<T, Task<bool>> predicate)
-    {
-        var results = await Task.WhenAll(source.Select(async x =>(x, await predicate(x))));
+        this IEnumerable<T> source,
+        Func<T, Task<bool>> predicate) {
+        var results = await Task.WhenAll(source.Select(async x => (x, await predicate(x))));
         return results.Where(r => r.Item2).Select(r => r.Item1);
     }
 }

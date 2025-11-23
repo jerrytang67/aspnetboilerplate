@@ -1,9 +1,10 @@
-﻿using System.Globalization;
+using System.Globalization;
+using Microsoft.Extensions.Logging;
 using Abp.Configuration;
 using Abp.Domain.Uow;
 using Abp.Localization;
 using Abp.Localization.Sources;
-using Castle.Core.Logging;
+using Abp.Logging;
 
 namespace Abp.BackgroundJobs
 {
@@ -76,18 +77,11 @@ namespace Abp.BackgroundJobs
         }
 
         private ILocalizationSource _localizationSource;
-
-        /// <summary>
-        /// Reference to the logger to write logs.
-        /// </summary>
-        public ILogger Logger { protected get; set; }
-
         /// <summary>
         /// Constructor.
         /// </summary>
         protected BackgroundJobBase()
         {
-            Logger = NullLogger.Instance;
             LocalizationManager = NullLocalizationManager.Instance;
         }
 

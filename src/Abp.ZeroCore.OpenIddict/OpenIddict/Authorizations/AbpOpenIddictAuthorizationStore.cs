@@ -7,10 +7,10 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Transactions;
+using Microsoft.Extensions.Logging;
 using Abp.Domain.Uow;
 using Abp.OpenIddict.Applications;
 using Abp.OpenIddict.Tokens;
-using Microsoft.Extensions.Logging;
 using OpenIddict.Abstractions;
 
 namespace Abp.OpenIddict.Authorizations;

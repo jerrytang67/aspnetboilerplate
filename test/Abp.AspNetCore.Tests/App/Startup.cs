@@ -1,11 +1,11 @@
 using System;
+using Microsoft.Extensions.Logging;
 using Abp.AspNetCore.Configuration;
 using Abp.AspNetCore.Mvc.Extensions;
 using Abp.AspNetCore.TestBase;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 
 namespace Abp.AspNetCore.App;
 

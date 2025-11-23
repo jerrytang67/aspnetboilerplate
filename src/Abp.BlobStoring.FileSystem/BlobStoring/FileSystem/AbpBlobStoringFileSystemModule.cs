@@ -6,9 +6,12 @@ namespace Abp.BlobStoring.FileSystem
     [DependsOn(typeof(AbpBlobStoringModule))]
     public class AbpBlobStoringFileSystemModule : AbpModule
     {
+        public override void ConfigureServices() {
+            IocManager.RegisterAssemblyByConvention(Assembly.GetExecutingAssembly());
+        }
+
         public override void Initialize()
         {
-            IocManager.RegisterAssemblyByConvention(Assembly.GetExecutingAssembly());
         }
     }
 }
